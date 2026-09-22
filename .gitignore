@@ -1,0 +1,4 @@
+budget.db
+*.db
+.env
+node_modules/
