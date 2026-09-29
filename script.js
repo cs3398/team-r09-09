@@ -1,4 +1,7 @@
 
+
+const API_URL = window.location.port === "8000" ? "" : "http://localhost:8000";
+let currentUser = null;
 /*
     Store references to the major sections of the application.
     These elements are shown or hidden as the user moves through
@@ -20,6 +23,20 @@ const logExpenseButton = document.getElementById("logExpenseButton");
 const expenseSection = document.getElementById("expenseSection");
 
 const expenseForm = document.getElementById("expenseForm");
+
+
+//Error detection (AI section) - Jason S
+async function api(path, options = {}) {
+    const response = await fetch(API_URL + path, {
+        headers: { "Content-Type": "application/json" },
+        ...options,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(data.detail || "Something went wrong. Is the backend running?");
+    }
+    return data;
+}
 
 
 /*
@@ -54,7 +71,7 @@ showLogin.addEventListener("click", function(event) {
 */
 const loginForm = document.getElementById("loginForm");
 
-loginForm.addEventListener("submit", function(event) {
+loginForm.addEventListener("submit", async function(event) {
     event.preventDefault();
 
     const email = document.getElementById("email").value;
@@ -62,13 +79,30 @@ loginForm.addEventListener("submit", function(event) {
 
     if (email === "" || password === "") {
         alert("Please enter your email and password.");
-    } else {
+        return;
+    } 
         /*
             Move the user to the dashboard after the basic
             frontend validation succeeds.
         */
+        //loginSection.style.display = "none";
+        //dashboardSection.style.display = "block";
+    
+
+    try {
+        const result = await api("/login", {
+            method: "POST",
+            body:JSON.stringify({email, password}),
+        });
+        if (result.error) {
+            alert(result.error);
+            return;
+        }
+        currentUser=result;
         loginSection.style.display = "none";
         dashboardSection.style.display = "block";
+    } catch (error) {
+        alert(error.message);
     }
 });
 
@@ -83,7 +117,7 @@ loginForm.addEventListener("submit", function(event) {
 */
 const signupForm = document.getElementById("signupForm");
 
-signupForm.addEventListener("submit", function(event) {
+signupForm.addEventListener("submit", async function(event) {
     event.preventDefault();
 
     const name = document.getElementById("name").value;
@@ -93,10 +127,25 @@ signupForm.addEventListener("submit", function(event) {
 
     if (name === "" || email === "" || password === "" || confirmPassword === "") {
         alert("Please fill in all fields.");
-    } else if (password !== confirmPassword) {
+        return;
+    } 
+    if (password !== confirmPassword) {
         alert("Passwords do not match.");
-    } else {
-        alert("Account information entered.");
+        return;
+    } 
+
+    try {
+        await api("/users", {
+            method: "POST",
+            body:JSON.stringify({email, password}),
+        });
+        
+        alert("Account sucesfully created");
+        signupForm.reset(); //Reset sighnup
+        signupSection.style.display = "none";
+        loginSection.style.display = "block";
+    } catch (error) {
+        alert(error.message);
     }
 });
 

@@ -1,12 +1,28 @@
+#version 1.1
+
 # This backend application is built using FastAPI and serves as the backend for a budget tracker application. 
 # It provides endpoints to retrieve users, accounts, and transactions from a database. The application is designed to be used with a React frontend, which can make requests to these endpoints using the fetch() API.
 # For react, use fetch() to make requests to the backend endpoints. Example: fetch('http://localhost:8000/users').
 
 from fastapi import FastAPI # Imports FastAPI framework to create the backend application.
+from fastapi.middleware.cors import CORSMiddleware
 from JustinN_backend.database import get_connection # Imports the get_connection function from the database module to establish a connection to the database.
+from JustinN_backend.database import init_db #Import init_db function - Jason S
+
+#call function to start db - Jason S
+init_db()
 
 # Creates fastapi app instance with title, description, and version.
 app = FastAPI(title="Budget Tracker Backend", description="Backend for the Budget Tracker application", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+
+
+)
 
 # The following are GET endpoints defined to handle requests from the frontend and interact with the database.
 
@@ -55,7 +71,10 @@ def calculate_total_balance(user_id: int):
 @app.post("/users")
 def create_user(user: dict): 
     conn = get_connection()
-    cursor = conn.execute("INSERT INTO user_profile (email) VALUES (?)", (user["email"],))
+    #add password
+    cursor = conn.execute(
+        "INSERT INTO user_profile (email, password_hash) VALUES (?, ?)",(user["email"],user["password"]),
+        )
     conn.commit()
     user_id = cursor.lastrowid
     conn.close()
@@ -78,6 +97,18 @@ def create_transaction(transaction: dict):
     transaction_id = cursor.lastrowid
     conn.close()
     return {"transaction_id": transaction_id}
+
+#added login - Jason S
+@app.post("/login")
+def login(login: dict):
+    conn = get_connection() #(login: dict):  is this right?
+    user = conn.execute("SELECT * FROM user_profile WHERE email=? AND password_hash=?",(login["email"], login["password"]),).fetchone()
+    #conn.commit()
+    conn.close()
+    #send error if incorrecy -JasonS
+    if user is None:
+        return {"error": "Incorrect Login"}
+    return {"user_id": user["id"], "email": user["email"]}
 
 
 

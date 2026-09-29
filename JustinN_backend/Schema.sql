@@ -9,25 +9,26 @@
 
 --App code needs to run above line when connecting to DB - Jason S
 
-CREATE TABLE user_profile (
+CREATE TABLE IF NOT EXISTS user_profile ( --Change if Not exists. DO NOT create new if user already exists - Jason S
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL, --Password won't be hashed for demo 1 - Jason S
     creation_date TEXT DEFAULT (datetime('now'))
 );
 
 
-CREATE TABLE transactions (
+CREATE TABLE IF NOT EXISTS transactions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
     description TEXT NOT NULL,
     amount INTEGER NOT NULL,
     income INTEGER NOT NULL,
-    expenses INTEGER NOT NULL
+    expenses INTEGER NOT NULL,
     --amount DEC(10,2) --Change this to cents to avoid rounding error - Jason S
     date TEXT DEFAULT (datetime('now'))
 );
 
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES user_profile(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
@@ -37,7 +38,7 @@ CREATE TABLE categories (
 
 );
 
-CREATE TABLE budgets(
+CREATE TABLE IF NOT EXISTS budgets(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL REFERENCES user_profile(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
@@ -46,7 +47,7 @@ CREATE TABLE budgets(
     CHECK (end_date >= start_date)
 );
 
-CREATE TABLE budget_transactions(
+CREATE TABLE IF NOT EXISTS budget_transactions(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     budget_id INTEGER NOT NULL REFERENCES budgets(id) ON DELETE CASCADE,
     category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE,
