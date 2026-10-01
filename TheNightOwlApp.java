@@ -81,7 +81,7 @@ public class TheNightOwlApp extends JFrame {
         JPanel outer = new JPanel(new GridBagLayout());
         outer.setBackground(new Color(15, 23, 42)); // Deep Slate
 
-        JPanel card = new JPanel();
+       JPanel card = new JPanel();
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setBackground(new Color(30, 41, 59)); // Slate Card
         card.setBorder(BorderFactory.createCompoundBorder(
@@ -90,12 +90,52 @@ public class TheNightOwlApp extends JFrame {
         ));
         card.setPreferredSize(new Dimension(680, 820));
 
-        // App Header Brand
-        JLabel logoBadge = new JLabel("🦉 THE NIGHT OWL");
-        logoBadge.setFont(new Font("SansSerif", Font.BOLD, 14));
-        logoBadge.setForeground(new Color(56, 189, 248));
+       // App Header Brand Logo
+        JLabel logoBadge = new JLabel(new Icon() {
+            @Override
+            public void paintIcon(Component c, Graphics g, int x, int y) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                
+                // Outer Glowing Circle Badge
+                g2.setColor(new Color(59, 130, 246)); // Bright Blue
+                g2.fillOval(x + 4, y + 4, 64, 64);
+
+                // Owl Body
+                g2.setColor(new Color(15, 23, 42)); // Dark Slate
+                g2.fillOval(x + 12, y + 14, 48, 48);
+
+                // Owl Eye Rings
+                g2.setColor(new Color(59, 130, 246));
+                g2.drawOval(x + 18, y + 22, 16, 16);
+                g2.drawOval(x + 38, y + 22, 16, 16);
+
+                // Pupils
+                g2.setColor(Color.WHITE);
+                g2.fillOval(x + 24, y + 27, 6, 6);
+                g2.fillOval(x + 42, y + 27, 6, 6);
+
+                // Amber Beak
+                g2.setColor(new Color(245, 158, 11));
+                int[] xPoints = {x + 32, x + 40, x + 36};
+                int[] yPoints = {y + 40, y + 40, y + 48};
+                g2.fillPolygon(xPoints, yPoints, 3);
+
+                g2.dispose();
+            }
+
+            @Override
+            public int getIconWidth() { return 72; }
+
+            @Override
+            public int getIconHeight() { return 72; }
+        });
         logoBadge.setAlignmentX(Component.CENTER_ALIGNMENT);
 
+        JLabel brandNameLabel = new JLabel("THE NIGHT OWL");
+        brandNameLabel.setFont(new Font("SansSerif", Font.BOLD, 14));
+        brandNameLabel.setForeground(new Color(56, 189, 248));
+        brandNameLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         JLabel titleLabel = new JLabel("Student Budget Planner");
         titleLabel.setFont(new Font("SansSerif", Font.BOLD, 30));
         titleLabel.setForeground(Color.WHITE);
@@ -225,6 +265,8 @@ public class TheNightOwlApp extends JFrame {
         });
 
         card.add(logoBadge);
+        card.add(Box.createVerticalStrut(8));
+        card.add(brandNameLabel);
         card.add(Box.createVerticalStrut(6));
         card.add(titleLabel);
         card.add(subTitleLabel);
