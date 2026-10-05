@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>My Finances</title>
+
+    <!-- Connects the page to the stylesheet that controls the application's appearance. -->
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="login-box">
+
+        <!--
+            Login screen displayed when the application first opens.
+            JavaScript switches to the dashboard after the user enters
+            the required login information.
+        -->
+        <div id="loginSection">
+
+            <h1>Login</h1>
+
+            <p>Welcome back! Please log in to your account.</p>
+
+            <form id="loginForm">
+
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email">
+
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password">
+
+                <button type="submit">Log In</button>
+
+            </form>
+
+            <!-- Allows users without an account to switch to the sign-up screen. -->
+            <p>
+                Don't have an account?
+                <a href="#" id="showSignup">Sign Up</a>
+            </p>
+
+        </div>
+
+
+        <!--
+            Sign-up screen for collecting the information needed to
+            create a user account. Actual account creation will later
+            be handled by the backend.
+        -->
+        <div id="signupSection" style="display: none;">
+
+            <h1>Create Account</h1>
+
+            <p>Create a new account to get started.</p>
+
+            <form id="signupForm">
+
+                <label for="name">Full Name:</label>
+                <input type="text" id="name" name="name">
+
+                <label for="signupEmail">Email:</label>
+                <input type="email" id="signupEmail" name="signupEmail">
+
+                <label for="signupPassword">Password:</label>
+                <input type="password" id="signupPassword" name="signupPassword">
+
+                <label for="confirmPassword">Confirm Password:</label>
+                <input type="password" id="confirmPassword" name="confirmPassword">
+
+                <button type="submit">Create Account</button>
+
+            </form>
+
+            <!-- Allows existing users to return to the login screen. -->
+            <p>
+                Already have an account?
+                <a href="#" id="showLogin">Log In</a>
+            </p>
+
+        </div>
+
+
+        <!--
+            Main financial dashboard.
+            This section is hidden until the user successfully completes
+            the frontend login validation.
+        -->
+        <div id="dashboardSection" style="display: none;">
+
+            <h1>My Finances</h1>
+
+            <p>Welcome to your financial dashboard.</p>
+
+
+            <!-- Displays the user's current balance. -->
+            <div class="dashboard-card">
+
+                <h2>Total Balance</h2>
+
+                <p class="balance">$2,450.00</p>
+
+            </div>
+
+
+            <!--
+                Expense history area.
+                JavaScript adds new expense entries to expenseList.
+                The backend will eventually provide persistent expense data.
+            -->
+            <div class="dashboard-card">
+
+                <h2>Recent Expenses</h2>
+
+                <div id="expenseList">
+
+                    <p id="noExpensesMessage">
+                        No expenses recorded yet.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <!-- Opens the expense entry form. -->
+            <button id="logExpenseButton">
+                Log Expense
+            </button>
+
+
+            <!--
+                Expense entry form.
+                These fields represent the information that will eventually
+                be sent to the backend and stored in the database.
+            -->
+            <div id="expenseSection" style="display: none;">
+
+                <h2>Log an Expense</h2>
+
+                <form id="expenseForm">
+
+                    <label for="expenseName">Expense Name:</label>
+
+                    <input
+                        type="text"
+                        id="expenseName"
+                        name="expenseName"
+                        placeholder="Example: Groceries"
+                    >
+
+
+                    <label for="expenseAmount">Amount:</label>
+
+                    <input
+                        type="number"
+                        id="expenseAmount"
+                        name="expenseAmount"
+                        placeholder="0.00"
+                        step="0.01"
+                    >
+
+
+                    <label for="expenseCategory">Category:</label>
+
+                    <select
+                        id="expenseCategory"
+                        name="expenseCategory"
+                    >
+
+                        <option value="">
+                            Select a category
+                        </option>
+
+                        <option value="Food">
+                            Food
+                        </option>
+
+                        <option value="Transportation">
+                            Transportation
+                        </option>
+
+                        <option value="Bills">
+                            Bills
+                        </option>
+
+                        <option value="Entertainment">
+                            Entertainment
+                        </option>
+
+                        <option value="Shopping">
+                            Shopping
+                        </option>
+
+                        <option value="Other">
+                            Other
+                        </option>
+
+                    </select>
+
+
+                    <label for="expenseDate">Date:</label>
+
+                    <input
+                        type="date"
+                        id="expenseDate"
+                        name="expenseDate"
+                    >
+
+
+                    <label for="expenseNotes">Notes:</label>
+
+                    <textarea
+                        id="expenseNotes"
+                        name="expenseNotes"
+                        placeholder="Optional notes"
+                    ></textarea>
+
+
+                    <button type="submit">
+                        Add Expense
+                    </button>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- JavaScript controls screen changes, validation, and expense display. -->
+    <script src="script.js"></script>
+
+</body>
+
+</html>

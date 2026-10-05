@@ -1,0 +1,237 @@
+/*
+    Applies consistent sizing to all elements.
+    This prevents padding and borders from unexpectedly increasing
+    the width of form elements.
+*/
+* {
+    box-sizing: border-box;
+}
+
+
+/*
+    Sets the overall appearance of the application page.
+    Flexbox centers the application card both horizontally and vertically.
+*/
+body {
+    font-family: Arial, sans-serif;
+
+    background-color: #f4f6f8;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    min-height: 100vh;
+
+    margin: 0;
+}
+
+
+/*
+    Main container for the login, sign-up, and dashboard screens.
+    Only one of these sections is displayed at a time.
+*/
+.login-box {
+    width: 450px;
+
+    background-color: white;
+
+    padding: 40px;
+
+    border-radius: 12px;
+
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+
+.login-box h1 {
+    text-align: center;
+
+    margin-bottom: 10px;
+}
+
+
+.login-box h2 {
+    margin-top: 25px;
+}
+
+
+.login-box p {
+    text-align: center;
+
+    color: #666;
+}
+
+
+/*
+    Makes form labels appear above their corresponding input fields
+    so the purpose of each field is clear to the user.
+*/
+.login-box label {
+    display: block;
+
+    margin-bottom: 5px;
+
+    font-weight: bold;
+}
+
+
+/*
+    Gives all form controls a consistent appearance and size.
+*/
+.login-box input,
+.login-box select,
+.login-box textarea {
+    width: 100%;
+
+    padding: 12px;
+
+    margin-top: 6px;
+    margin-bottom: 18px;
+
+    border: 1px solid #ccc;
+
+    border-radius: 6px;
+
+    font-size: 16px;
+}
+
+
+/*
+    Allows the notes field to grow vertically when the user
+    needs more space for a longer description.
+*/
+.login-box textarea {
+    height: 80px;
+
+    resize: vertical;
+}
+
+
+/*
+    Gives buttons a consistent style throughout the application.
+*/
+.login-box button {
+    width: 100%;
+
+    padding: 12px;
+
+    background-color: #333;
+
+    color: white;
+
+    border: none;
+
+    border-radius: 6px;
+
+    font-size: 16px;
+
+    cursor: pointer;
+}
+
+
+/*
+    Provides visual feedback when the user moves the mouse
+    over an interactive button.
+*/
+.login-box button:hover {
+    background-color: #555;
+}
+
+
+/*
+    Styles navigation links used to switch between login and
+    sign-up screens.
+*/
+.login-box a {
+    color: #333;
+
+    font-weight: bold;
+
+    text-decoration: none;
+}
+
+
+.login-box a:hover {
+    text-decoration: underline;
+}
+
+
+/*
+    Creates card-style sections on the financial dashboard.
+    Cards separate different types of financial information
+    and make the dashboard easier to read.
+*/
+.dashboard-card {
+    background-color: #f4f6f8;
+
+    padding: 20px;
+
+    margin-top: 20px;
+
+    border-radius: 8px;
+}
+
+
+.dashboard-card h2 {
+    margin-top: 0;
+
+    font-size: 18px;
+}
+
+
+/*
+    Makes the balance stand out as one of the main pieces
+    of information on the dashboard.
+*/
+.balance {
+    font-size: 30px;
+
+    font-weight: bold;
+
+    color: #222;
+
+    margin: 10px 0;
+}
+
+
+/*
+    Separates the expense form from the dashboard information
+    so the user can clearly identify where a new expense is entered.
+*/
+#expenseSection {
+    margin-top: 25px;
+
+    padding-top: 20px;
+
+    border-top: 1px solid #ddd;
+}
+
+
+/*
+    Each expense entered by the user is displayed as its own
+    small card inside the Recent Expenses section.
+*/
+.expense-item {
+    background-color: white;
+
+    padding: 12px;
+
+    margin-top: 10px;
+
+    border-radius: 6px;
+
+    border: 1px solid #ddd;
+}
+
+
+.expense-item strong {
+    font-size: 17px;
+}
+
+
+.expense-item p {
+    margin: 5px 0;
+
+    text-align: left;
+}
