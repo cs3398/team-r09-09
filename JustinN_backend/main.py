@@ -6,8 +6,7 @@
 
 from fastapi import FastAPI # Imports FastAPI framework to create the backend application.
 from fastapi.middleware.cors import CORSMiddleware
-from JustinN_backend.database import get_connection # Imports the get_connection function from the database module to establish a connection to the database.
-from JustinN_backend.database import init_db #Import init_db function - Jason S
+from database import get_connection, init_db
 
 #call function to start db - Jason S
 init_db()
@@ -90,14 +89,30 @@ def create_account(account: dict):
     return {"account_id": account_id}
 
 @app.post("/transactions")
-def create_transaction(transaction: dict):  
+def create_transaction(transaction: dict):
     conn = get_connection()
-    cursor = conn.execute("INSERT INTO transactions (account_id, description, amount, date) VALUES (?, ?, ?, ?)", (transaction["account_id"], transaction["description"], transaction["amount"], transaction["date"]))
+
+    cursor = conn.execute(
+        """
+        INSERT INTO transactions
+        (account_id, description, amount, income, expenses, date)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (
+            transaction["account_id"],
+            transaction["description"],
+            transaction["amount"],
+            0,
+            transaction["amount"],
+            transaction["date"]
+        )
+    )
+
     conn.commit()
     transaction_id = cursor.lastrowid
     conn.close()
-    return {"transaction_id": transaction_id}
 
+    return {"transaction_id": transaction_id}
 #added login - Jason S
 @app.post("/login")
 def login(login: dict):

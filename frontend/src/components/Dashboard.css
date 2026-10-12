@@ -1,0 +1,241 @@
+
+/* Main dashboard layout */
+.dashboard-page {
+  min-height: 100vh;
+  padding: 30px;
+  background-color: #0f172a;
+  color: #e2e8f0;
+}
+
+/* Dashboard header and budget controls */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.dashboard-header h1 {
+  color: white;
+  font-size: 28px;
+  margin: 0;
+}
+
+.dashboard-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.dashboard-actions label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.dashboard-actions input {
+  width: 110px;
+  padding: 10px;
+  background-color: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  color: white;
+}
+
+/* Dashboard buttons */
+.dashboard-button {
+  padding: 11px 16px;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dashboard-button:hover {
+  background-color: #2563eb;
+}
+
+.signout-button {
+  padding: 11px 16px;
+  background-color: #334155;
+  color: white;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.signout-button:hover {
+  background-color: #475569;
+}
+
+/* Total spent and remaining balance cards */
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.stat-card {
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 25px;
+}
+
+.stat-card h2 {
+  color: #94a3b8;
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+
+.stat-card p {
+  color: white;
+  font-size: 30px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.stat-card .remaining-balance {
+  color: #10b981;
+}
+
+/* Expense form and dashboard sections */
+.dashboard-section {
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 22px;
+  margin-bottom: 25px;
+}
+
+.dashboard-section h2 {
+  color: white;
+  font-size: 17px;
+  margin: 0 0 20px;
+}
+
+.expense-form {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.expense-form > div {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 170px;
+}
+
+.expense-form label {
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+.expense-form input,
+.expense-form select {
+  width: 100%;
+  padding: 11px;
+  background-color: #0f172a;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  color: white;
+  font-size: 14px;
+}
+
+.expense-form .dashboard-button {
+  min-height: 42px;
+}
+
+/* Category breakdown */
+.category-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 10px 0;
+  border-bottom: 1px solid #334155;
+  font-size: 14px;
+}
+
+.breakdown-row:last-child {
+  border-bottom: none;
+}
+
+.breakdown-row span:last-child {
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+/* Recent transactions table */
+.transactions-container {
+  overflow-x: auto;
+}
+
+.transactions-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.transactions-table th,
+.transactions-table td {
+  padding: 14px;
+  border-bottom: 1px solid #334155;
+}
+
+.transactions-table th {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.transactions-table td {
+  color: #e2e8f0;
+  font-size: 14px;
+}
+
+.empty-transactions {
+  text-align: center;
+  color: #94a3b8 !important;
+  padding: 30px !important;
+}
+
+/* Responsive layout for smaller screens */
+@media (max-width: 768px) {
+  .dashboard-page {
+    padding: 20px 15px;
+  }
+
+  .dashboard-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-header h1 {
+    font-size: 24px;
+  }
+
+  .dashboard-actions {
+    width: 100%;
+  }
+
+  .expense-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .expense-form > div {
+    width: 100%;
+  }
+}

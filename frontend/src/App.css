@@ -1,0 +1,217 @@
+
+/* =========================================
+   THE NIGHT OWL - LOGIN / SIGNUP STYLES
+   ========================================= */
+
+/* Main authentication page */
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  background-color: #0f172a;
+}
+
+/* Centered login and signup card */
+.auth-card {
+  width: 100%;
+  max-width: 560px;
+  padding: 35px 36px;
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+/* =========================================
+   APPLICATION BRANDING
+   ========================================= */
+
+/* Main application title */
+.app-title {
+  color: #ffffff;
+  font-size: 34px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+/* Subtitle underneath the application name */
+.app-subtitle {
+  color: #94a3b8;
+  font-size: 15px;
+  margin: 0 0 28px;
+}
+
+/* =========================================
+   BUDGET CATEGORY PREVIEW
+   ========================================= */
+
+/* Container holding the five budget categories */
+.category-preview {
+  background-color: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 7px;
+  padding: 14px;
+  margin-bottom: 28px;
+  text-align: left;
+}
+
+/* Category section heading */
+.category-preview h3 {
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  margin: 0 0 12px;
+}
+
+/* Allows category badges to appear horizontally */
+.category-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Individual category badges */
+.category-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 9px;
+  background-color: #1e293b;
+  border-radius: 5px;
+  color: #e2e8f0;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Small icon displayed beside each category */
+.category-icon {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+/* =========================================
+   LOGIN AND SIGNUP FORM
+   ========================================= */
+
+/* Form layout */
+.auth-card form {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+/* Labels for email and password fields */
+.auth-card label {
+  color: #cbd5e1;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+/* Email, password, and confirmation inputs */
+.auth-card input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 20px;
+  background-color: #0f172a;
+  border: 1px solid #475569;
+  border-radius: 6px;
+  color: white;
+  font-size: 14px;
+}
+
+/* Highlight input when selected */
+.auth-card input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+/* Placeholder text */
+.auth-card input::placeholder {
+  color: #64748b;
+}
+
+/* =========================================
+   LOGIN AND SIGNUP BUTTONS
+   ========================================= */
+
+/* Main Sign In / Create Account button */
+.submit-btn {
+  width: 100%;
+  padding: 13px;
+  margin-top: 4px;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Main button hover effect */
+.submit-btn:hover {
+  background-color: #2563eb;
+}
+
+/* Switch between Login and Sign Up */
+.toggle-btn {
+  margin-top: 20px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Toggle button hover effect */
+.toggle-btn:hover {
+  color: #60a5fa;
+}
+
+/* =========================================
+   FORM VALIDATION MESSAGES
+   ========================================= */
+
+/* Displays validation and status messages */
+.form-message {
+  color: #fca5a5;
+  font-size: 13px;
+  margin-bottom: 15px;
+}
+
+
+/* =========================================
+   RESPONSIVE DESIGN
+   ========================================= */
+
+/* Adjust layout for smaller screens */
+@media (max-width: 600px) {
+  .auth-page {
+    padding: 15px;
+  }
+
+  .auth-card {
+    padding: 28px 20px;
+  }
+
+  .app-title {
+    font-size: 29px;
+  }
+
+  .app-subtitle {
+    font-size: 14px;
+  }
+
+  .category-badge {
+    font-size: 11px;
+  }
+
+  .category-preview {
+    padding: 12px;
+  }
+}
