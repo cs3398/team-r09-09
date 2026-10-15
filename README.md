@@ -1,8 +1,10 @@
 # V 1.1
 
 To run:
-1. Go to root directory (TEAM-R09-09 folder)
-2. Install dependencies ('pip install fastapi uvicorn') for backend
-3. Run 'uvicorn JustinN_backend.main:app --reload'
-4. Open http://localhost:8000/
-5. From IDE open index.html with live server or serve mode
+1. Terminal 1: cd team-r09-09/JustinN_backend
+pip3 install fastapi uvicorn
+uvicorn main:app --reload
+
+2. Terminal 2: cd team-r09-09/frontend
+npm install
+npm run dev
