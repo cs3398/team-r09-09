@@ -39,7 +39,6 @@ CREATE TABLE IF NOT EXISTS categories (
     type TEXT NOT NULL, --add check?
     UNIQUE (user_id, name, type)
 
-
 );
 
 CREATE TABLE IF NOT EXISTS budgets(

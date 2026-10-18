@@ -19,11 +19,9 @@ app.add_middleware(
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
-
-
 )
 
-# The following are GET endpoints defined to handle requests from the frontend and interact with the database.
+### The following are GET endpoints defined to handle requests from the frontend and interact with the database.
 
 # Defines a root endpoint that returns a message indicating that the backend is running.
 @app.get("/")
@@ -57,28 +55,47 @@ def get_transactions(account_id: int):
     conn.close()
     return {"transactions": [dict(transaction) for transaction in transactions]}
 
-def calculate_total_balance(user_id: int):
+@app.get("/categories/{user_id}")
+def get_categories(user_id: int):
+    conn = get_connection()
+    cursor = conn.execute("SELECT * FROM categories WHERE user_id = ?", (user_id,))
+    categories = cursor.fetchall()
+    conn.close()
+    return {"categories": [dict(category) for category in categories]}
+
+@app.get("/budgets/{user_id}")
+def get_budgets(user_id: int):
+    conn = get_connection()
+    cursor = conn.execute("SELECT * FROM budgets WHERE user_id = ?", (user_id,))
+    budgets = cursor.fetchall()
+    conn.close()
+    return {"budgets": [dict(budget) for budget in budgets]}
+
+# Defines an endpoint to retrieve the total balance for a specific user_id by summing the balances of all accounts associated with that user. Still work in progress.
+''' def calculate_total_balance(user_id: int):
     conn = get_connection()
     cursor = conn.execute("SELECT SUM(balance) as total_balance FROM account WHERE user_id = ?", (user_id,))
     total_balance = cursor.fetchone()["total_balance"]
     conn.close()
     return total_balance
+'''
 
-# The following are POST endpoints defined to handle requests from the frontend and interact with the database.
+### The following are POST endpoints defined to handle requests from the frontend and interact with the database.
 
-
+# Defines an endpoint to create a new user in the user_profile table in the database. It accepts a JSON payload containing the user's email and password.
 @app.post("/users")
 def create_user(user: dict): 
     conn = get_connection()
     #add password
     cursor = conn.execute(
-        "INSERT INTO user_profile (email, password_hash) VALUES (?, ?)",(user["email"],user["password"]),
+        "INSERT INTO user_profile (email, password_hash) VALUES (?, ?)",(user["email"],user["password_hash"]),
         )
     conn.commit()
     user_id = cursor.lastrowid
     conn.close()
     return {"user_id": user_id}   
 
+# Defines an endpoint to create a new account in the accounts table in the database. It accepts a JSON payload containing the user_id and account name.
 @app.post("/accounts")
 def create_account(account: dict):  
     conn = get_connection()
@@ -88,6 +105,7 @@ def create_account(account: dict):
     conn.close()
     return {"account_id": account_id}
 
+# Defines an endpoint to create a new transaction in the transactions table in the database. It accepts a JSON payload containing the account_id, description, amount, and date of the transaction.
 @app.post("/transactions")
 def create_transaction(transaction: dict):
     conn = get_connection()
@@ -113,6 +131,31 @@ def create_transaction(transaction: dict):
     conn.close()
 
     return {"transaction_id": transaction_id}
+
+# Defines an endpoint to create a new category in the categories table in the database. It accepts a JSON payload containing the user_id, name, and type of the category.
+@app.post("/categories")
+def create_category(category: dict):
+    conn = get_connection()
+    cursor = conn.execute(
+        "INSERT INTO categories (user_id, name, type) VALUES (?, ?, ?)", (category["user_id"], category["name"], category["type"])
+    )
+    conn.commit()
+    category_id = cursor.lastrowid
+    conn.close()
+    return {"category_id": category_id}
+
+# Defines an endpoint to create a new budget in the budgets table in the database. It accepts a JSON payload containing the user_id, category_id, and amount of the budget.
+@app.post("/budgets")
+def create_budget(budget: dict):
+    conn = get_connection()
+    cursor = conn.execute(
+        "INSERT INTO budgets (user_id, name, start_date, end_date) VALUES (?, ?, ?, ?)", (budget["user_id"], budget["name"], budget["start_date"], budget["end_date"])
+    )
+    conn.commit()
+    budget_id = cursor.lastrowid
+    conn.close()
+    return {"budget_id": budget_id}
+
 #added login - Jason S
 @app.post("/login")
 def login(login: dict):
