@@ -4,7 +4,7 @@
 # It provides endpoints to retrieve users, accounts, and transactions from a database. The application is designed to be used with a React frontend, which can make requests to these endpoints using the fetch() API.
 # For react, use fetch() to make requests to the backend endpoints. Example: fetch('http://localhost:8000/users').
 
-from fastapi import FastAPI # Imports FastAPI framework to create the backend application.
+from fastapi import FastAPI, HTTPException # Imports FastAPI framework to create the backend application. Imports HTTPException to handle exceptions and return appropriate HTTP responses.
 from fastapi.middleware.cors import CORSMiddleware
 from database import get_connection, init_db
 
@@ -55,6 +55,7 @@ def get_transactions(account_id: int):
     conn.close()
     return {"transactions": [dict(transaction) for transaction in transactions]}
 
+# Defines an endpoint to retrieve all categories associated with a specific user_id from the categories table in the database.
 @app.get("/categories/{user_id}")
 def get_categories(user_id: int):
     conn = get_connection()
@@ -63,6 +64,7 @@ def get_categories(user_id: int):
     conn.close()
     return {"categories": [dict(category) for category in categories]}
 
+# Defines an endpoint to retrieve all budgets associated with a specific user_id from the budgets table in the database.
 @app.get("/budgets/{user_id}")
 def get_budgets(user_id: int):
     conn = get_connection()
@@ -165,7 +167,7 @@ def login(login: dict):
     conn.close()
     #send error if incorrecy -JasonS
     if user is None:
-        return {"error": "Incorrect Login"}
+        raise HTTPException(status_code=401, detail="Incorrect Login")
     return {"user_id": user["id"], "email": user["email"]}
 
 # Skeletal logout endpoint. Actual implementation will depend on how authentication is handled (e.g., sessions, tokens, etc.). For now, it simply returns a success message.
@@ -176,10 +178,55 @@ def logout():
 
 # Sekeletal endpoint to update a user's password. Actual implementation will depend on how authentication is handled (e.g., sessions, tokens, etc.). For now, it simply returns a success message.
 @app.post("/update_password")
-def update_password(user: dict):
+def update_password():
     # Implement password update logic here (e.g., verify current password, hash new password, update database, etc.)
     return {"message": "Password updated successfully."}
 
+### The following are DELETE endpoints defined to handle requests from the frontend and interact with the database.
 
+# Defines an endpoint to delete a user from the user_profile table in the database. It accepts a user_id as a path parameter and deletes the corresponding user record.
+@app.delete("/users/{user_id}")
+def delete_user(user_id: int):
+    conn = get_connection()
+    conn.execute("DELETE FROM user_profile WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+    return {"message": "User deleted successfully."}
+
+# Defines an endpoint to delete an account from the accounts table in the database. It accepts an account_id as a path parameter and deletes the corresponding account record.
+@app.delete("/accounts/{account_id}")
+def delete_account(account_id: int):
+    conn = get_connection()
+    conn.execute("DELETE FROM accounts WHERE id = ?", (account_id,))
+    conn.commit()
+    conn.close()
+    return {"message": "Account deleted successfully."}
+
+# Defines an endpoint to delete a transaction from the transactions table in the database. It accepts a transaction_id as a path parameter and deletes the corresponding transaction record.
+@app.delete("/transactions/{transaction_id}")
+def delete_transaction(transaction_id: int):
+    conn = get_connection()
+    conn.execute("DELETE FROM transactions WHERE id = ?", (transaction_id,))
+    conn.commit()
+    conn.close()
+    return {"message": "Transaction deleted successfully."}
+
+# Defines an endpoint to delete a category from the categories table in the database. It accepts a category_id as a path parameter and deletes the corresponding category record.
+@app.delete("/categories/{category_id}")
+def delete_category(category_id: int):
+    conn = get_connection()
+    conn.execute("DELETE FROM categories WHERE id = ?", (category_id,))
+    conn.commit()
+    conn.close()
+    return {"message": "Category deleted successfully."}
+
+# Defines an endpoint to delete a budget from the budgets table in the database. It accepts a budget_id as a path parameter and deletes the corresponding budget record.
+@app.delete("/budgets/{budget_id}")
+def delete_budget(budget_id: int):
+    conn = get_connection()
+    conn.execute("DELETE FROM budgets WHERE id = ?", (budget_id,))
+    conn.commit()
+    conn.close()
+    return {"message": "Budget deleted successfully."}
 
 # Future endpoints are to be added later and will allow the frontend to perform CRUD operations on the database through the backend application.
