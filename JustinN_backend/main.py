@@ -168,6 +168,18 @@ def login(login: dict):
         return {"error": "Incorrect Login"}
     return {"user_id": user["id"], "email": user["email"]}
 
+# Skeletal logout endpoint. Actual implementation will depend on how authentication is handled (e.g., sessions, tokens, etc.). For now, it simply returns a success message.
+@app.post("/logout")
+def logout():
+    # Implement logout logic here (e.g., clear session, token, etc.)
+    return {"message": "User logged out successfully."}
+
+# Sekeletal endpoint to update a user's password. Actual implementation will depend on how authentication is handled (e.g., sessions, tokens, etc.). For now, it simply returns a success message.
+@app.post("/update_password")
+def update_password(user: dict):
+    # Implement password update logic here (e.g., verify current password, hash new password, update database, etc.)
+    return {"message": "Password updated successfully."}
+
 
 
 # Future endpoints are to be added later and will allow the frontend to perform CRUD operations on the database through the backend application.
