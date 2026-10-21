@@ -5,7 +5,8 @@ import './App.css';
 
 // Local address of the team's FastAPI backend.
 // React sends login and signup requests to this server.
-const API_URL = 'http://127.0.0.1:8000';
+const API_URL = 'http://127.0.0.1:8001';
+
 
 function App() {
   // Controls whether the user sees the login or signup form.

@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     income INTEGER NOT NULL,
     expenses INTEGER NOT NULL,
     --amount DEC(10,2) --Change this to cents to avoid rounding error - Jason S
+    category TEXT,
     date TEXT DEFAULT (datetime('now'))
 );
 
@@ -38,7 +39,6 @@ CREATE TABLE IF NOT EXISTS categories (
     name TEXT NOT NULL,
     type TEXT NOT NULL, --add check?
     UNIQUE (user_id, name, type)
-
 
 );
 

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import './Dashboard.css';
 
 // Address of the Python FastAPI backend running on your Mac.
-const API_URL = 'http://127.0.0.1:8000';
+const API_URL = 'http://127.0.0.1:8001';
 
 // Categories displayed in The Night Owl dashboard.
 // The current backend does not save transaction categories yet.
@@ -204,6 +204,7 @@ function Dashboard({ userId, onSignOut }) {
           account_id: accountId,
           description: title.trim(),
           amount: amountInCents,
+          category: category,
           date: date
         })
       });
@@ -379,20 +380,29 @@ function Dashboard({ userId, onSignOut }) {
 
       <section className="dashboard-section">
         <h2>Category Breakdown (% of Monthly Income)</h2>
-
         <div className="category-breakdown">
-          {categories.map((item) => (
-            <div className="breakdown-row" key={item}>
-              <span>{item}</span>
-              <span>Not available yet</span>
-            </div>
-          ))}
-        </div>
+          {categories.map((item) => {
+            // Calculate total cents for transactions matching this category
+            const categoryTotalCents = transactions
+              .filter((t) => t.category === item)
+              .reduce((sum, t) => sum + Number(t.amount), 0);
 
-        <p style={{ color: '#94a3b8', fontSize: '13px' }}>
-          Category totals will be available when the backend
-          supports saving a category with each expense.
-        </p>
+            const budgetCents = Math.round(budget * 100);
+            const percentage =
+              budgetCents > 0
+                ? ((categoryTotalCents / budgetCents) * 100).toFixed(1)
+                : '0.0';
+
+            return (
+              <div className="breakdown-row" key={item}>
+                <span>{item}</span>
+                <span>
+                  {formatMoney(categoryTotalCents)} ({percentage}%)
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </section>
 
       <section className="dashboard-section">
@@ -426,7 +436,7 @@ function Dashboard({ userId, onSignOut }) {
                   .map((transaction) => (
                     <tr key={transaction.id}>
                       <td>{transaction.description}</td>
-                      <td>Not saved</td>
+                      <td>{transaction.category || 'Uncategorized'}</td>
                       <td>
                         {formatMoney(Number(transaction.amount))}
                       </td>
