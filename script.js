@@ -1,6 +1,6 @@
 
 
-const API_URL = window.location.port === "8000" ? "" : "http://localhost:8000";
+const API_URL = window.location.port === "8001" ? "" : "http://localhost:8001";
 let currentUser = null;
 /*
     Store references to the major sections of the application.

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import './Dashboard.css';
 
 // Address of the Python FastAPI backend running on your Mac.
-const API_URL = 'http://127.0.0.1:8000';
+const API_URL = 'http://127.0.0.1:8001';
 
 // Categories displayed in The Night Owl dashboard.
 // The current backend does not save transaction categories yet.
@@ -204,6 +204,7 @@ function Dashboard({ userId, onSignOut }) {
           account_id: accountId,
           description: title.trim(),
           amount: amountInCents,
+          category: category,
           date: date
         })
       });
@@ -426,7 +427,7 @@ function Dashboard({ userId, onSignOut }) {
                   .map((transaction) => (
                     <tr key={transaction.id}>
                       <td>{transaction.description}</td>
-                      <td>Not saved</td>
+                      <td>{transaction.category || 'Uncategorized'}</td>
                       <td>
                         {formatMoney(Number(transaction.amount))}
                       </td>

@@ -2,8 +2,9 @@
 
 # This backend application is built using FastAPI and serves as the backend for a budget tracker application. 
 # It provides endpoints to retrieve users, accounts, and transactions from a database. The application is designed to be used with a React frontend, which can make requests to these endpoints using the fetch() API.
-# For react, use fetch() to make requests to the backend endpoints. Example: fetch('http://localhost:8000/users').
+# For react, use fetch() to make requests to the backend endpoints. Example: fetch('http://localhost:8001/users').
 
+import hashlib
 from fastapi import FastAPI, HTTPException # Imports FastAPI framework to create the backend application. Imports HTTPException to handle exceptions and return appropriate HTTP responses.
 from fastapi.middleware.cors import CORSMiddleware
 from database import get_connection, init_db
@@ -88,10 +89,13 @@ def get_budgets(user_id: int):
 @app.post("/users")
 def create_user(user: dict): 
     conn = get_connection()
-    #add password
+   # Hash the plain-text password from the request body
+    plain_password = user["password"]
+    hashed_password = hashlib.sha256(plain_password.encode('utf-8')).hexdigest()
     cursor = conn.execute(
-        "INSERT INTO user_profile (email, password_hash) VALUES (?, ?)",(user["email"],user["password_hash"]),
-        )
+        "INSERT INTO user_profile (email, password_hash) VALUES (?, ?)",
+        (user["email"], hashed_password)
+    )
     conn.commit()
     user_id = cursor.lastrowid
     conn.close()
@@ -115,7 +119,7 @@ def create_transaction(transaction: dict):
     cursor = conn.execute(
         """
         INSERT INTO transactions
-        (account_id, description, amount, income, expenses, date)
+        (account_id, description, amount, income, expenses, category, date)
         VALUES (?, ?, ?, ?, ?, ?)
         """,
         (
@@ -124,6 +128,7 @@ def create_transaction(transaction: dict):
             transaction["amount"],
             0,
             transaction["amount"],
+            transaction.get("category"),
             transaction["date"]
         )
     )
@@ -158,11 +163,33 @@ def create_budget(budget: dict):
     conn.close()
     return {"budget_id": budget_id}
 
+# Defines an endpoint to create a new expense in the transactions table in the database. It accepts a JSON payload containing the account_id, title, amount, and date.
+@app.post("/expenses")
+def create_expense(expense: dict):
+    conn = get_connection()
+    cursor = conn.execute(
+        "INSERT INTO transactions (account_id, description, amount, income, expenses, category, date) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (
+            expense.get("account_id", 1),
+            expense.get("title"),
+            expense.get("amount"),
+            0,
+            expense.get("amount"),
+            expense.get("category"),
+            expense.get("date")  # Pulls the exact date sent by the frontend
+        )
+    )
+    conn.commit()
+    expense_id = cursor.lastrowid
+    conn.close()
+    return {"expense_id": expense_id}
+
 #added login - Jason S
 @app.post("/login")
 def login(login: dict):
     conn = get_connection() #(login: dict):  is this right?
-    user = conn.execute("SELECT * FROM user_profile WHERE email=? AND password_hash=?",(login["email"], login["password"]),).fetchone()
+    hashed_password = hashlib.sha256(login["password"].encode('utf-8')).hexdigest()
+    user = conn.execute("SELECT * FROM user_profile WHERE email=? AND password_hash=?",(login["email"], hashed_password),).fetchone()
     #conn.commit()
     conn.close()
     #send error if incorrecy -JasonS
