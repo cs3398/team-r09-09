@@ -73,6 +73,28 @@ def get_budgets(user_id: int):
     conn.close()
     return {"budgets": [dict(budget) for budget in budgets]}
 
+# Defines an endpoint to retrieve a summary of budgets, categories, and total spent for a specific user_id. 
+# It joins the budgets, categories, and transactions tables to calculate the total amount spent in each category within the budget period.
+@app.get("/budget_summary/{user_id}")
+def get_budget_summary(user_id: int):
+    conn = get_connection()
+    cursor = conn.execute(
+        """
+        SELECT b.id as budget_id, b.name as budget_name, b.start_date, b.end_date,
+               c.id as category_id, c.name as category_name, c.type as category_type,
+               SUM(t.amount) as total_spent
+        FROM budgets b
+        JOIN categories c ON b.user_id = c.user_id
+        LEFT JOIN transactions t ON c.id = t.category_id AND t.date BETWEEN b.start_date AND b.end_date
+        WHERE b.user_id = ?
+        GROUP BY b.id, c.id
+        """,
+        (user_id,)
+    )
+    budget_summary = cursor.fetchall()
+    conn.close()
+    return {"budget_summary": [dict(summary) for summary in budget_summary]}
+
 # Defines an endpoint to retrieve the total balance for a specific user_id by summing the balances of all accounts associated with that user. Still work in progress.
 ''' def calculate_total_balance(user_id: int):
     conn = get_connection()
