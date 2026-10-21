@@ -75,6 +75,7 @@ def get_budgets(user_id: int):
 
 # Defines an endpoint to retrieve a summary of budgets, categories, and total spent for a specific user_id. 
 # It joins the budgets, categories, and transactions tables to calculate the total amount spent in each category within the budget period.
+# For now, purely skeletal. Will need to be updated to include the budget amount and the remaining balance for each budget.
 @app.get("/budget_summary/{user_id}")
 def get_budget_summary(user_id: int):
     conn = get_connection()
@@ -94,15 +95,6 @@ def get_budget_summary(user_id: int):
     budget_summary = cursor.fetchall()
     conn.close()
     return {"budget_summary": [dict(summary) for summary in budget_summary]}
-
-# Defines an endpoint to retrieve the total balance for a specific user_id by summing the balances of all accounts associated with that user. Still work in progress.
-''' def calculate_total_balance(user_id: int):
-    conn = get_connection()
-    cursor = conn.execute("SELECT SUM(balance) as total_balance FROM account WHERE user_id = ?", (user_id,))
-    total_balance = cursor.fetchone()["total_balance"]
-    conn.close()
-    return total_balance
-'''
 
 ### The following are POST endpoints defined to handle requests from the frontend and interact with the database.
 
