@@ -23,7 +23,7 @@ function formatMoney(cents) {
   });
 }
 
-function Dashboard({ userId, onSignOut }) {
+function Dashboard({ userId, onSignOut, onOpenCalendar }) {
   // The budget is temporary React state until the backend
   // provides endpoints for storing and retrieving budgets.
   const [budget, setBudget] = useState(2500);
@@ -281,6 +281,15 @@ function Dashboard({ userId, onSignOut }) {
           >
             Update Budget
           </button>
+          
+          
+          <button
+            type="button"
+            className="dashboard-button"
+            onClick={onOpenCalendar}>
+              
+              Calendar 
+            </button>
 
           <button
             type="button"

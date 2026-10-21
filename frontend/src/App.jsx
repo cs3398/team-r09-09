@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
 import Dashboard from './components/Dashboard';
+import Calendar from './components/Calendar';
 import './App.css';
 
 // Local address of the team's FastAPI backend.
@@ -15,6 +16,7 @@ function App() {
   // Tracks the logged-in user and whether to display the dashboard.
   const [showDashboard, setShowDashboard] = useState(false);
   const [userId, setUserId] = useState(null);
+  const [page, setPage] = useState('dashboard'); //track page - Json S
 
   // Stores the values entered into the authentication form.
   const [email, setEmail] = useState('');
@@ -119,6 +121,7 @@ function App() {
   function handleSignOut() {
     setShowDashboard(false);
     setUserId(null);
+    setPage('dashboard');
     setIsSignUp(false);
     setEmail('');
     setPassword('');
@@ -128,14 +131,33 @@ function App() {
 
   // Only a successful login can display the dashboard.
   // The user ID is passed to Dashboard for database requests.
-  if (showDashboard) {
+  /*if (showDashboard) {
     return (
       <Dashboard
         userId={userId}
         onSignOut={handleSignOut}
       />
     );
+  } */
+ if (showDashboard) {
+  if (page === 'calendar') {
+    return (
+      <Calendar
+        userId={userId}
+        onBack={() => setPage('dashboard')}
+      />
+    );
   }
+
+  return (
+    <Dashboard
+      userId={userId}
+      onSignOut={handleSignOut}
+      onOpenCalendar={() => setPage('calendar')}
+    />
+  );
+}
+ 
 
   return (
     <div className="auth-page">
