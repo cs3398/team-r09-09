@@ -18,4 +18,4 @@ def get_connection():
 def init_db():
     conn = get_connection()
     conn.executescript(SCHEMA_PATH.read_text())
-    conn.close
+    conn.close()

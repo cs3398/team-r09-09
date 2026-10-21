@@ -15,7 +15,11 @@ CREATE TABLE IF NOT EXISTS user_profile ( --Change if Not exists. DO NOT create 
     password_hash TEXT NOT NULL, --Password won't be hashed for demo 1 - Jason S
     creation_date TEXT DEFAULT (datetime('now'))
 );
-
+CREATE TABLE IF NOT EXISTS accounts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES user_profile(id) ON DELETE CASCADE,
+    name TEXT NOT NULL
+);
 
 CREATE TABLE IF NOT EXISTS transactions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,6 +29,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     income INTEGER NOT NULL,
     expenses INTEGER NOT NULL,
     --amount DEC(10,2) --Change this to cents to avoid rounding error - Jason S
+    category TEXT,
     date TEXT DEFAULT (datetime('now'))
 );
 
@@ -34,7 +39,6 @@ CREATE TABLE IF NOT EXISTS categories (
     name TEXT NOT NULL,
     type TEXT NOT NULL, --add check?
     UNIQUE (user_id, name, type)
-
 
 );
 
