@@ -380,20 +380,29 @@ function Dashboard({ userId, onSignOut }) {
 
       <section className="dashboard-section">
         <h2>Category Breakdown (% of Monthly Income)</h2>
-
         <div className="category-breakdown">
-          {categories.map((item) => (
-            <div className="breakdown-row" key={item}>
-              <span>{item}</span>
-              <span>Not available yet</span>
-            </div>
-          ))}
-        </div>
+          {categories.map((item) => {
+            // Calculate total cents for transactions matching this category
+            const categoryTotalCents = transactions
+              .filter((t) => t.category === item)
+              .reduce((sum, t) => sum + Number(t.amount), 0);
 
-        <p style={{ color: '#94a3b8', fontSize: '13px' }}>
-          Category totals will be available when the backend
-          supports saving a category with each expense.
-        </p>
+            const budgetCents = Math.round(budget * 100);
+            const percentage =
+              budgetCents > 0
+                ? ((categoryTotalCents / budgetCents) * 100).toFixed(1)
+                : '0.0';
+
+            return (
+              <div className="breakdown-row" key={item}>
+                <span>{item}</span>
+                <span>
+                  {formatMoney(categoryTotalCents)} ({percentage}%)
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </section>
 
       <section className="dashboard-section">
