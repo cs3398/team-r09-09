@@ -134,7 +134,7 @@ def create_transaction(transaction: dict):
         """
         INSERT INTO transactions
         (account_id, description, amount, income, expenses, category, date)
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         """,
         (
             transaction["account_id"],
