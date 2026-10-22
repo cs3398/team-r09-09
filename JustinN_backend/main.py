@@ -7,7 +7,7 @@
 import hashlib
 from fastapi import FastAPI, HTTPException # Imports FastAPI framework to create the backend application. Imports HTTPException to handle exceptions and return appropriate HTTP responses.
 from fastapi.middleware.cors import CORSMiddleware
-from .database import get_connection, init_db
+from database import get_connection, init_db
 
 #call function to start db - Jason S
 init_db()
