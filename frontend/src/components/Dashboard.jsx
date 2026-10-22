@@ -26,6 +26,10 @@ function formatMoney(cents) {
 function Dashboard({ userId, onSignOut }) {
   // The budget is temporary React state until the backend
   // provides endpoints for storing and retrieving budgets.
+  const [userPoints, setUserPoints] = useState(150);
+  const [showRewardsModal, setShowRewardsModal] = useState(false);
+  const UNLOCK_THRESHOLD = 200;
+  const pointsNeeded = Math.max(0, UNLOCK_THRESHOLD - userPoints);
   const [budget, setBudget] = useState(2500);
   const [budgetInput, setBudgetInput] = useState('2500');
 
@@ -261,6 +265,31 @@ function Dashboard({ userId, onSignOut }) {
         <h1>The Night Owl Dashboard</h1>
 
         <div className="dashboard-actions">
+          <div 
+            onClick={() => setShowRewardsModal(true)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              background: 'rgba(30, 41, 59, 0.85)',
+              border: '1px solid #334155',
+              padding: '12px 24px',
+              borderRadius: '32px',
+              cursor: 'pointer',
+              userSelect: 'none',
+              marginRight: '15px'
+            }}
+          >
+            <span style={{ fontSize: '36px' }}>🏆</span>
+            <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+              <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#f8fafc' }}>
+                {userPoints} PTS
+              </span>
+              <span style={{ fontSize: '18px', color: '#94a3b8' }}>
+                {userPoints >= UNLOCK_THRESHOLD ? "$50 Unlocked!" : `${pointsNeeded} pts to $50`}
+              </span>
+            </div>
+          </div>
           <label htmlFor="monthlyBudget">
             Monthly Budget/Income ($):
           </label>
