@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Calendar | Night Owl</title>
+
+  <!-- Your shared site styles (fix the path if this file is in another folder) -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- FullCalendar: one script tag, no npm or build step needed -->
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+
+  <style>
+    .cal-page { max-width: 900px; margin: 0 auto; padding: 16px; }
+    .cal-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .cal-top a { color: inherit; text-decoration: none; }
+    #calendar { --fc-today-bg-color: rgba(138, 125, 255, 0.15); }
+    .streak-day { background: #8a7dff !important; opacity: 0.55; }
+  </style>
+</head>
+<body>
+  <main class="cal-page">
+    <div class="cal-top">
+      <a href="index.html">&larr; Home</a>
+      <p>Current streak: <strong id="streak-count">0</strong> days</p>
+    </div>
+    <div id="calendar"></div>
+  </main>
+
+  <script src="calendar.js"></script>
+</body>
+</html>
