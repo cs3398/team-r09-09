@@ -1,5 +1,14 @@
 
 import { useEffect, useState } from 'react';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
+
 import './Dashboard.css';
 
 // Address of the Python FastAPI backend running on your Mac.
@@ -255,6 +264,36 @@ function Dashboard({ userId, onSignOut, onOpenCalendar }) {
   const budgetCents = Math.round(budget * 100);
   const remainingCents = budgetCents - totalSpentCents;
 
+  // Group saved expenses by category for the spending pie chart.
+  const spendingByCategory = transactions.reduce((totals, transaction) => {
+    const categoryName = transaction.category || 'Uncategorized';
+    const expenseAmount = Number(transaction.amount);
+
+    if (Number.isFinite(expenseAmount) && expenseAmount > 0) {
+      totals[categoryName] = (totals[categoryName] || 0) + expenseAmount;
+    }
+
+    return totals;
+  }, {});
+
+  // Prepare the category totals for Recharts.
+  const pieChartData = Object.entries(spendingByCategory).map(
+    ([name, value]) => ({
+      name,
+      value
+    })
+  );
+
+  // Colors assigned to each category in the pie chart.
+  const pieChartColors = [
+    '#3b82f6',
+    '#10b981',
+    '#f59e0b',
+    '#a855f7',
+    '#ef4444',
+    '#06b6d4'
+  ];
+
   return (
     <div className="dashboard-page">
       <header className="dashboard-header">
@@ -412,6 +451,68 @@ function Dashboard({ userId, onSignOut, onOpenCalendar }) {
             );
           })}
         </div>
+      </section>
+
+      {/* Pie chart showing how total spending is divided by category */}
+      <section className="dashboard-section">
+        <h2>Spending Breakdown by Category</h2>
+
+        <p className="chart-description">
+          See how your expenses are distributed across categories.
+        </p>
+
+        {pieChartData.length === 0 ? (
+          <p className="chart-empty">
+            No expenses recorded yet. Add an expense to see your chart.
+          </p>
+        ) : (
+          <div className="spending-chart">
+            <ResponsiveContainer width="100%" height={350}>
+              <PieChart>
+                <Pie
+                  data={pieChartData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="43%"
+                  innerRadius={55}
+                  outerRadius={100}
+                  paddingAngle={2}
+                >
+                  {pieChartData.map((entry, index) => (
+                    <Cell
+                      key={entry.name}
+                      fill={pieChartColors[index % pieChartColors.length]}
+                    />
+                  ))}
+                </Pie>
+
+                <Tooltip
+                  formatter={(value) => [
+                    `${formatMoney(value)} (${(
+                      (value / totalSpentCents) * 100
+                    ).toFixed(1)}%)`,
+                    'Spending'
+                  ]}
+                  contentStyle={{
+                    backgroundColor: '#0f172a',
+                    border: '1px solid #475569',
+                    borderRadius: '8px',
+                    color: '#e2e8f0'
+                  }}
+                  itemStyle={{ color: '#e2e8f0' }}
+                />
+
+                <Legend
+                  wrapperStyle={{
+                    color: '#e2e8f0',
+                    fontSize: '13px'
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </section>
 
       <section className="dashboard-section">

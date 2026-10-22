@@ -239,3 +239,38 @@
     width: 100%;
   }
 }
+/* Spending breakdown pie chart */
+.spending-chart {
+  width: 100%;
+  min-width: 0;
+  padding: 15px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Description above the chart */
+.chart-description {
+  color: #94a3b8;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+/* Message shown when no expenses have been recorded */
+.chart-empty {
+  color: #94a3b8;
+  text-align: center;
+  padding: 40px 15px;
+  font-size: 14px;
+}
+
+/* Mobile layout adjustments */
+@media (max-width: 768px) {
+  .spending-chart {
+    padding: 10px 0;
+  }
+
+  .chart-description {
+    font-size: 13px;
+  }
+}
