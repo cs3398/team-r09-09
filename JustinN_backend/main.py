@@ -7,10 +7,7 @@
 import hashlib
 from fastapi import FastAPI, HTTPException # Imports FastAPI framework to create the backend application. Imports HTTPException to handle exceptions and return appropriate HTTP responses.
 from fastapi.middleware.cors import CORSMiddleware
-from database import get_connection, init_db
-
-#call function to start db - Jason S
-init_db()
+from .database import get_connection
 
 # Creates fastapi app instance with title, description, and version.
 app = FastAPI(title="Budget Tracker Backend", description="Backend for the Budget Tracker application", version="1.0.0")
@@ -18,6 +15,7 @@ app = FastAPI(title="Budget Tracker Backend", description="Backend for the Budge
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -42,7 +40,7 @@ def get_users():
 @app.get("/accounts/{user_id}")
 def get_accounts(user_id: int):
     conn = get_connection()
-    cursor = conn.execute("SELECT * FROM accounts WHERE user_id = ?", (user_id,))
+    cursor = conn.execute("SELECT * FROM accounts WHERE user_id = %s", (user_id,))
     accounts = cursor.fetchall()
     conn.close()
     return {"accounts": [dict(account) for account in accounts]}
@@ -51,7 +49,7 @@ def get_accounts(user_id: int):
 @app.get("/transactions/{account_id}")
 def get_transactions(account_id: int):
     conn = get_connection()
-    cursor = conn.execute("SELECT * FROM transactions WHERE account_id = ?", (account_id,))
+    cursor = conn.execute("SELECT * FROM transactions WHERE account_id = %s", (account_id,))
     transactions = cursor.fetchall()
     conn.close()
     return {"transactions": [dict(transaction) for transaction in transactions]}
@@ -60,7 +58,7 @@ def get_transactions(account_id: int):
 @app.get("/categories/{user_id}")
 def get_categories(user_id: int):
     conn = get_connection()
-    cursor = conn.execute("SELECT * FROM categories WHERE user_id = ?", (user_id,))
+    cursor = conn.execute("SELECT * FROM categories WHERE user_id = %s", (user_id,))
     categories = cursor.fetchall()
     conn.close()
     return {"categories": [dict(category) for category in categories]}
@@ -69,7 +67,7 @@ def get_categories(user_id: int):
 @app.get("/budgets/{user_id}")
 def get_budgets(user_id: int):
     conn = get_connection()
-    cursor = conn.execute("SELECT * FROM budgets WHERE user_id = ?", (user_id,))
+    cursor = conn.execute("SELECT * FROM budgets WHERE user_id = %s", (user_id,))
     budgets = cursor.fetchall()
     conn.close()
     return {"budgets": [dict(budget) for budget in budgets]}
@@ -107,11 +105,11 @@ def create_user(user: dict):
     plain_password = user["password"]
     hashed_password = hashlib.sha256(plain_password.encode('utf-8')).hexdigest()
     cursor = conn.execute(
-        "INSERT INTO user_profile (email, password_hash) VALUES (?, ?)",
+        "INSERT INTO user_profile (email, password_hash) VALUES (%s, %s) RETURNING id",
         (user["email"], hashed_password)
     )
     conn.commit()
-    user_id = cursor.lastrowid
+    user_id = cursor.fetchone()['id']
     conn.close()
     return {"user_id": user_id}   
 
@@ -119,9 +117,9 @@ def create_user(user: dict):
 @app.post("/accounts")
 def create_account(account: dict):  
     conn = get_connection()
-    cursor = conn.execute("INSERT INTO accounts (user_id, name) VALUES (?, ?)", (account["user_id"], account["name"]))
+    cursor = conn.execute("INSERT INTO accounts (user_id, name) VALUES (%s, %s) RETURNING id", (account["user_id"], account["name"]))
     conn.commit()
-    account_id = cursor.lastrowid
+    account_id = cursor.fetchone()['id']
     conn.close()
     return {"account_id": account_id}
 
@@ -134,7 +132,7 @@ def create_transaction(transaction: dict):
         """
         INSERT INTO transactions
         (account_id, description, amount, income, expenses, category, date)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
         """,
         (
             transaction["account_id"],
@@ -148,7 +146,7 @@ def create_transaction(transaction: dict):
     )
 
     conn.commit()
-    transaction_id = cursor.lastrowid
+    transaction_id = cursor.fetchone()['id']
     conn.close()
 
     return {"transaction_id": transaction_id}
@@ -158,10 +156,10 @@ def create_transaction(transaction: dict):
 def create_category(category: dict):
     conn = get_connection()
     cursor = conn.execute(
-        "INSERT INTO categories (user_id, name, type) VALUES (?, ?, ?)", (category["user_id"], category["name"], category["type"])
+        "INSERT INTO categories (user_id, name, type) VALUES (%s, %s, %s) RETURNING id", (category["user_id"], category["name"], category["type"])
     )
     conn.commit()
-    category_id = cursor.lastrowid
+    category_id = cursor.fetchone()['id']
     conn.close()
     return {"category_id": category_id}
 
@@ -170,10 +168,10 @@ def create_category(category: dict):
 def create_budget(budget: dict):
     conn = get_connection()
     cursor = conn.execute(
-        "INSERT INTO budgets (user_id, name, start_date, end_date) VALUES (?, ?, ?, ?)", (budget["user_id"], budget["name"], budget["start_date"], budget["end_date"])
+        "INSERT INTO budgets (user_id, name, start_date, end_date) VALUES (%s, %s, %s, %s) RETURNING id", (budget["user_id"], budget["name"], budget["start_date"], budget["end_date"])
     )
     conn.commit()
-    budget_id = cursor.lastrowid
+    budget_id = cursor.fetchone()['id']
     conn.close()
     return {"budget_id": budget_id}
 
@@ -182,7 +180,7 @@ def create_budget(budget: dict):
 def create_expense(expense: dict):
     conn = get_connection()
     cursor = conn.execute(
-        "INSERT INTO transactions (account_id, description, amount, income, expenses, category, date) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO transactions (account_id, description, amount, income, expenses, category, date) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
         (
             expense.get("account_id", 1),
             expense.get("title"),
@@ -194,7 +192,7 @@ def create_expense(expense: dict):
         )
     )
     conn.commit()
-    expense_id = cursor.lastrowid
+    expense_id = cursor.fetchone()['id']
     conn.close()
     return {"expense_id": expense_id}
 
@@ -203,7 +201,8 @@ def create_expense(expense: dict):
 def login(login: dict):
     conn = get_connection() #(login: dict):  is this right?
     hashed_password = hashlib.sha256(login["password"].encode('utf-8')).hexdigest()
-    user = conn.execute("SELECT * FROM user_profile WHERE email=? AND password_hash=?",(login["email"], hashed_password),).fetchone()
+    cursor = conn.execute("SELECT * FROM user_profile WHERE email=%s AND password_hash=%s",(login["email"], hashed_password),)
+    user = cursor.fetchone()
     #conn.commit()
     conn.close()
     #send error if incorrecy -JasonS
@@ -229,7 +228,7 @@ def update_password():
 @app.delete("/users/{user_id}")
 def delete_user(user_id: int):
     conn = get_connection()
-    conn.execute("DELETE FROM user_profile WHERE id = ?", (user_id,))
+    conn.execute("DELETE FROM user_profile WHERE id = %s", (user_id,))
     conn.commit()
     conn.close()
     return {"message": "User deleted successfully."}
@@ -238,7 +237,7 @@ def delete_user(user_id: int):
 @app.delete("/accounts/{account_id}")
 def delete_account(account_id: int):
     conn = get_connection()
-    conn.execute("DELETE FROM accounts WHERE id = ?", (account_id,))
+    conn.execute("DELETE FROM accounts WHERE id = %s", (account_id,))
     conn.commit()
     conn.close()
     return {"message": "Account deleted successfully."}
@@ -247,7 +246,7 @@ def delete_account(account_id: int):
 @app.delete("/transactions/{transaction_id}")
 def delete_transaction(transaction_id: int):
     conn = get_connection()
-    conn.execute("DELETE FROM transactions WHERE id = ?", (transaction_id,))
+    conn.execute("DELETE FROM transactions WHERE id = %s", (transaction_id,))
     conn.commit()
     conn.close()
     return {"message": "Transaction deleted successfully."}
@@ -256,7 +255,7 @@ def delete_transaction(transaction_id: int):
 @app.delete("/categories/{category_id}")
 def delete_category(category_id: int):
     conn = get_connection()
-    conn.execute("DELETE FROM categories WHERE id = ?", (category_id,))
+    conn.execute("DELETE FROM categories WHERE id = %s", (category_id,))
     conn.commit()
     conn.close()
     return {"message": "Category deleted successfully."}
@@ -265,7 +264,7 @@ def delete_category(category_id: int):
 @app.delete("/budgets/{budget_id}")
 def delete_budget(budget_id: int):
     conn = get_connection()
-    conn.execute("DELETE FROM budgets WHERE id = ?", (budget_id,))
+    conn.execute("DELETE FROM budgets WHERE id = %s", (budget_id,))
     conn.commit()
     conn.close()
     return {"message": "Budget deleted successfully."}
