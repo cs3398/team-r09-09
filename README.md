@@ -1,10 +1,10 @@
-# V 1.X - Budget Tracker Project Set-Up Guide
+# Ver. Final - Budget Tracker Project Set-Up Guide
 
 ## Applications used:
 
 Backend: Python with FastAPI framework  
 Frontend: JavaScript with React  
-Database: SQLite  
+Database: Supabase PostgreSQL  
 
 ## Software to Download:
 
@@ -31,12 +31,27 @@ py -m pip install -r requirements.txt (Windows)
 python -m pip install -r requirements.txt (Windows)  
 python3 -m pip install -r requirements.txt (MacOS / Linux)  
 
-## 3. Start up FastAPI Backend
-python -m uvicorn JustinN_backend.main:app --reload (Windows)  
-py -m uvicorn JustinN_backend.main:app --reload (Windows)  
-python3 -m uvicorn JustinN_backend.main:app --reload (MacOS / Linux)  
+## 3. Configure Supabase Connection
+In project folder, create a new file called .env  
+Inside .env, add:
+DATABASE_URL=CONNECTION_STRING  
+Replace CONNECTION_STRING with the connection string provided by the project administrator.  
+Add the database connection string given by database project administrator  
+### IMPORTANT:  
+  1. Use connection string  
+  2. Replace password placeholder with database password (already provided in the connection string)  
+  3. Keep .env file private to your local computer  
+  4. Don't share the database password or the connection string  
+You can verify the database connection by running the following with Python virtual environment activated from the root directory:  
+python -m JustinN_backend.test_connection  
+python -m JustinN_backend.test_env
 
-**Once started, backend is available at: http://127.0.0.1:8000/**
+## 3. Start up FastAPI Backend
+python -m uvicorn JustinN_backend.main:app --reload --port 8001 (Windows)  
+py -m uvicorn JustinN_backend.main:app --reload --port 8001 (Windows)  
+python3 -m uvicorn JustinN_backend.main:app --reload --port 8001 (MacOS / Linux)  
+
+**Once started, backend is available at: http://127.0.0.1:8001/**
 
 # Frontend Setup (2nd Terminal):
 
@@ -54,7 +69,7 @@ npm run dev
 ## Terminal 1: 
 From the project root (team-r09-09):  
   1. Activate venv  
-  2. python -m uvicorn JustinN_backend.main:app --reload (Windows)  
+  2. python -m uvicorn JustinN_backend.main:app --reload --port 8001 (Windows)  
 
 ## Terminal 2: 
 From the project root (team-r09-09):  
