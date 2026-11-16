@@ -30,6 +30,7 @@ source .venv/bin/activate (MacOS / Linux)
 py -m pip install -r requirements.txt (Windows)  
 python -m pip install -r requirements.txt (Windows)  
 python3 -m pip install -r requirements.txt (MacOS / Linux)  
+python3 -m pip install plaid-python python-dotenv (MacOS / Linux)
 
 ## 3. Start up FastAPI Backend
 python -m uvicorn JustinN_backend.main:app --reload (Windows)  
