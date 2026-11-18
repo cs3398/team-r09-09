@@ -68,3 +68,64 @@ CREATE TABLE IF NOT EXISTS budget_transactions(
    -- name TEXT NOT NULL,
     --password_hash NOT NULL --Encrypt 
 --);
+
+
+
+-- ============================================================
+-- SAVINGS GOALS TRACKER
+-- Added for The Night Owl Savings Goals feature.
+-- ============================================================
+
+-- Stores savings goals belonging to individual users.
+CREATE TABLE IF NOT EXISTS savings_goals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    -- Owner of the savings goal.
+    user_id INTEGER NOT NULL
+        REFERENCES user_profile(id) ON DELETE CASCADE,
+
+    -- Name of the goal, such as "New Laptop".
+    name TEXT NOT NULL,
+
+    -- Amount the user wants to save.
+    target_cents INTEGER NOT NULL CHECK (target_cents > 0),
+
+    -- Total contributions allocated toward this goal.
+    saved_cents INTEGER NOT NULL DEFAULT 0
+        CHECK (saved_cents >= 0 AND saved_cents <= target_cents),
+
+    -- Prevents awarding completion points more than once.
+    reward_awarded INTEGER NOT NULL DEFAULT 0
+        CHECK (reward_awarded IN (0, 1)),
+
+    -- Date the savings goal was created.
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+
+-- Records individual contributions toward savings goals.
+-- These are tracked allocations, NOT actual expenses.
+CREATE TABLE IF NOT EXISTS savings_contributions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+    -- Goal receiving the contribution.
+    goal_id INTEGER NOT NULL
+        REFERENCES savings_goals(id) ON DELETE CASCADE,
+
+    -- Contribution amount in cents.
+    amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+
+    -- Date the contribution was recorded.
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+
+-- Stores Owl Points for each registered user.
+CREATE TABLE IF NOT EXISTS owl_points (
+    user_id INTEGER PRIMARY KEY
+        REFERENCES user_profile(id) ON DELETE CASCADE,
+
+    -- Current points available for rewards.
+    balance INTEGER NOT NULL DEFAULT 150
+        CHECK (balance >= 0)
+);

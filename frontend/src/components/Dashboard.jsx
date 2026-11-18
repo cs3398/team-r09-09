@@ -62,7 +62,7 @@ function formatMoney(cents) {
   });
 }
 
-function Dashboard({ userId, onSignOut, onOpenCalendar }) {
+function Dashboard({ userId, onSignOut, onOpenCalendar, onOpenSavings }) {
   // The budget is temporary React state until the backend
   // provides endpoints for storing and retrieving budgets.
   const [userPoints, setUserPoints] = useState(150);
@@ -101,6 +101,46 @@ function Dashboard({ userId, onSignOut, onOpenCalendar }) {
     return { name: 'Fledgling Owl', icon: 'feather', badge: 'bg-cyan-400/10 border-cyan-400/30 text-cyan-400' };
   };
   const tier = getTier(userPoints);
+
+  // ============================================================
+  // LOAD OWL POINTS FROM THE BACKEND
+  // ============================================================
+
+  // Retrieve the user's saved Owl Points balance whenever
+  // the Dashboard opens or the logged-in user changes.
+  useEffect(() => {
+    if (userId == null) return;
+
+    let cancelled = false;
+
+    async function loadOwlPoints() {
+      try {
+        const response = await fetch(
+          `${API_URL}/owl-points/${userId}`
+        );
+
+        if (!response.ok) {
+          throw new Error("Unable to retrieve Owl Points.");
+        }
+
+        const data = await response.json();
+
+        // Update the Dashboard only while it is mounted.
+        if (!cancelled && Number.isInteger(data.balance)) {
+          setUserPoints(data.balance);
+        }
+      } catch (error) {
+        console.error("Owl Points loading error:", error);
+      }
+    }
+
+    loadOwlPoints();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
 
   // Retrieves an existing account, or creates one for a new user.
   // The account ID is required when saving transactions.
@@ -401,6 +441,14 @@ function Dashboard({ userId, onSignOut, onOpenCalendar }) {
             onClick={onOpenCalendar}>
               
               Calendar 
+            </button>
+
+          <button
+            type="button"
+            className="dashboard-button"
+            onClick={onOpenSavings}>
+  
+              Savings Goals
             </button>
 
           <button

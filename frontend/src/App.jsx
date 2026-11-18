@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Dashboard from './components/Dashboard';
 import Calendar from './components/Calendar';
+import SavingsGoals from './components/SavingsGoals';
 import './App.css';
 
 // Local address of the team's FastAPI backend.
@@ -148,12 +149,21 @@ function App() {
       />
     );
   }
+  if (page === 'savings') {
+    return (
+      <SavingsGoals
+        userId={userId}
+        onBack={() => setPage('dashboard')}
+      />
+    );
+  }
 
   return (
     <Dashboard
       userId={userId}
       onSignOut={handleSignOut}
       onOpenCalendar={() => setPage('calendar')}
+      onOpenSavings={() => setPage('savings')}
     />
   );
 }

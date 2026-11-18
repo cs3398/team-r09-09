@@ -8,3 +8,6 @@ __pycache__/
 
 .DS_Store
 **/.DS_Store
+
+# Vite production build output
+/frontend/dist/

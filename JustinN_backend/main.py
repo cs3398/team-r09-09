@@ -271,3 +271,407 @@ def delete_budget(budget_id: int):
     return {"message": "Budget deleted successfully."}
 
 # Future endpoints are to be added later and will allow the frontend to perform CRUD operations on the database through the backend application.
+
+
+# ============================================================
+# SAVINGS GOALS TRACKER
+# ============================================================
+
+# Retrieves all savings goals belonging to a specific user.
+# The frontend will call this endpoint when the Savings Goals
+# page opens so previously saved goals can be displayed.
+@app.get("/savings-goals/{user_id}")
+def get_savings_goals(user_id: int):
+    conn = get_connection()
+
+    try:
+        # Only retrieve goals associated with this user ID.
+        goals = conn.execute(
+            """
+            SELECT id, user_id, name, target_cents,
+                   saved_cents, reward_awarded, created_at
+            FROM savings_goals
+            WHERE user_id = ?
+            ORDER BY id DESC
+            """,
+            (user_id,)
+        ).fetchall()
+
+        # Convert database rows into JSON-compatible dictionaries.
+        return {"goals": [dict(goal) for goal in goals]}
+
+    finally:
+        # Always close the database connection.
+        conn.close()
+
+
+# Creates a new savings goal for a registered user.
+# The goal begins with $0 saved and no completion reward.
+@app.post("/savings-goals")
+def create_savings_goal(goal: dict):
+    # Retrieve and validate the information from React.
+    user_id = goal.get("user_id")
+    name = goal.get("name", "")
+    target_cents = goal.get("target_cents")
+
+    if not isinstance(user_id, int) or isinstance(user_id, bool):
+        raise HTTPException(
+            status_code=400,
+            detail="A valid user ID is required."
+        )
+
+    if not isinstance(name, str) or not name.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Please enter a goal name."
+        )
+
+    if (
+        not isinstance(target_cents, int)
+        or isinstance(target_cents, bool)
+        or target_cents <= 0
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Target amount must be greater than zero."
+        )
+
+    conn = get_connection()
+
+    try:
+        # Confirm that the user exists before creating the goal.
+        user = conn.execute(
+            "SELECT id FROM user_profile WHERE id = ?",
+            (user_id,)
+        ).fetchone()
+
+        if user is None:
+            raise HTTPException(
+                status_code=404,
+                detail="User not found."
+            )
+
+        # Save the new goal using integer cents.
+        cursor = conn.execute(
+            """
+            INSERT INTO savings_goals
+                (user_id, name, target_cents, saved_cents, reward_awarded)
+            VALUES (?, ?, ?, 0, 0)
+            """,
+            (user_id, name.strip(), target_cents)
+        )
+
+        conn.commit()
+
+        return {
+            "goal_id": cursor.lastrowid,
+            "message": "Savings goal created successfully."
+        }
+
+    finally:
+        # Always close the database connection.
+        conn.close()
+
+
+# Updates the name or target amount of an existing savings goal.
+# Contributions already saved toward the goal are preserved.
+@app.put("/savings-goals/{goal_id}")
+def update_savings_goal(goal_id: int, update: dict):
+    user_id = update.get("user_id")
+    name = update.get("name")
+    target_cents = update.get("target_cents")
+
+    # Validate the information submitted by the frontend.
+    if not isinstance(user_id, int) or isinstance(user_id, bool):
+        raise HTTPException(
+            status_code=400,
+            detail="A valid user ID is required."
+        )
+
+    if not isinstance(name, str) or not name.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Please enter a goal name."
+        )
+
+    if (
+        not isinstance(target_cents, int)
+        or isinstance(target_cents, bool)
+        or target_cents <= 0
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Target amount must be greater than zero."
+        )
+
+    conn = get_connection()
+
+    try:
+        # Find the goal and verify that it belongs to this user.
+        goal = conn.execute(
+            """
+            SELECT saved_cents
+            FROM savings_goals
+            WHERE id = ? AND user_id = ?
+            """,
+            (goal_id, user_id)
+        ).fetchone()
+
+        if goal is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Savings goal not found."
+            )
+
+        # Do not allow a new target below the already saved amount.
+        if target_cents < goal["saved_cents"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Target cannot be lower than the amount already saved."
+            )
+
+        # Update only the name and target.
+        conn.execute(
+            """
+            UPDATE savings_goals
+            SET name = ?, target_cents = ?
+            WHERE id = ? AND user_id = ?
+            """,
+            (name.strip(), target_cents, goal_id, user_id)
+        )
+
+        conn.commit()
+
+        return {
+            "message": "Savings goal updated successfully."
+        }
+
+    finally:
+        conn.close()
+
+
+# Deletes a savings goal belonging to the specified user.
+# Associated contributions are automatically deleted because
+# savings_contributions uses ON DELETE CASCADE.
+@app.delete("/savings-goals/{goal_id}")
+def delete_savings_goal(goal_id: int, user_id: int):
+    conn = get_connection()
+
+    try:
+        # Verify that the goal exists and belongs to the user.
+        goal = conn.execute(
+            """
+            SELECT id
+            FROM savings_goals
+            WHERE id = ? AND user_id = ?
+            """,
+            (goal_id, user_id)
+        ).fetchone()
+
+        if goal is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Savings goal not found."
+            )
+
+        # Delete the goal and its contribution history.
+        conn.execute(
+            """
+            DELETE FROM savings_goals
+            WHERE id = ? AND user_id = ?
+            """,
+            (goal_id, user_id)
+        )
+
+        conn.commit()
+
+        return {
+            "message": "Savings goal deleted successfully."
+        }
+
+    finally:
+        conn.close()
+
+
+# ============================================================
+# SAVINGS CONTRIBUTIONS AND COMPLETION REWARDS
+# ============================================================
+
+# Adds savings toward a goal and awards 25 Owl Points
+# when the goal is completed for the first time.
+#
+# Savings contributions are allocations, not expenses.
+# They are stored separately from the transactions table.
+@app.post("/savings-goals/{goal_id}/contributions")
+def add_savings_contribution(goal_id: int, contribution: dict):
+
+    user_id = contribution.get("user_id")
+    amount_cents = contribution.get("amount_cents")
+
+    # Validate the user ID.
+    if not isinstance(user_id, int) or isinstance(user_id, bool):
+        raise HTTPException(
+            status_code=400,
+            detail="A valid user ID is required."
+        )
+
+    # Contributions must be positive integer amounts in cents.
+    if (
+        not isinstance(amount_cents, int)
+        or isinstance(amount_cents, bool)
+        or amount_cents <= 0
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Contribution must be greater than zero."
+        )
+
+    conn = get_connection()
+
+    try:
+        # Start a write transaction.
+        # The contribution and any reward must succeed together.
+        conn.execute("BEGIN IMMEDIATE")
+
+        # Find the goal and verify that it belongs to the user.
+        goal = conn.execute(
+            """
+            SELECT id, target_cents, saved_cents, reward_awarded
+            FROM savings_goals
+            WHERE id = ? AND user_id = ?
+            """,
+            (goal_id, user_id)
+        ).fetchone()
+
+        if goal is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Savings goal not found."
+            )
+
+        # Calculate the new savings balance.
+        new_saved_cents = goal["saved_cents"] + amount_cents
+
+        # Do not allow contributions beyond the goal's target.
+        if new_saved_cents > goal["target_cents"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Contribution exceeds the remaining goal amount."
+            )
+
+        # Record the individual savings contribution.
+        conn.execute(
+            """
+            INSERT INTO savings_contributions
+                (goal_id, amount_cents)
+            VALUES (?, ?)
+            """,
+            (goal_id, amount_cents)
+        )
+
+        # Update the total saved toward the goal.
+        conn.execute(
+            """
+            UPDATE savings_goals
+            SET saved_cents = ?
+            WHERE id = ? AND user_id = ?
+            """,
+            (new_saved_cents, goal_id, user_id)
+        )
+
+        points_earned = 0
+
+        # Check if the goal has reached 100% for the first time.
+        if (
+            new_saved_cents == goal["target_cents"]
+            and goal["reward_awarded"] == 0
+        ):
+
+            # Create a points balance if the user does not have one.
+            # The existing Dashboard starts users with 150 points.
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO owl_points
+                    (user_id, balance)
+                VALUES (?, 150)
+                """,
+                (user_id,)
+            )
+
+            # Award exactly 25 Owl Points.
+            conn.execute(
+                """
+                UPDATE owl_points
+                SET balance = balance + 25
+                WHERE user_id = ?
+                """,
+                (user_id,)
+            )
+
+            # Mark the goal as already rewarded.
+            # This prevents the same goal from awarding points again.
+            conn.execute(
+                """
+                UPDATE savings_goals
+                SET reward_awarded = 1
+                WHERE id = ? AND user_id = ?
+                """,
+                (goal_id, user_id)
+            )
+
+            points_earned = 25
+
+        # Save all database changes together.
+        conn.commit()
+
+        return {
+            "message": "Savings contribution recorded successfully.",
+            "saved_cents": new_saved_cents,
+            "points_earned": points_earned
+        }
+
+    except Exception:
+        # Undo all changes if any part of the operation fails.
+        conn.rollback()
+        raise
+
+    finally:
+        # Always close the database connection.
+        conn.close()
+
+# ============================================================
+# OWL POINTS REWARDS
+# ============================================================
+
+# Retrieves a user's Owl Points balance from the database.
+# Users begin with 150 points, matching the existing Dashboard.
+@app.get("/owl-points/{user_id}")
+def get_owl_points(user_id: int):
+    conn = get_connection()
+
+    try:
+        # Check whether the user exists.
+        user = conn.execute(
+            "SELECT id FROM user_profile WHERE id = ?",
+            (user_id,)
+        ).fetchone()
+
+        if user is None:
+            raise HTTPException(
+                status_code=404,
+                detail="User not found."
+            )
+
+        # Retrieve the user's current points balance.
+        points = conn.execute(
+            "SELECT balance FROM owl_points WHERE user_id = ?",
+            (user_id,)
+        ).fetchone()
+
+        # A user without a record starts with 150 Owl Points.
+        balance = points["balance"] if points else 150
+
+        return {"balance": balance}
+
+    finally:
+        conn.close()
