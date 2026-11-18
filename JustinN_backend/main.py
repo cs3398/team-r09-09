@@ -7,10 +7,7 @@
 import hashlib
 from fastapi import FastAPI, HTTPException # Imports FastAPI framework to create the backend application. Imports HTTPException to handle exceptions and return appropriate HTTP responses.
 from fastapi.middleware.cors import CORSMiddleware
-from database import get_connection, init_db
-
-#call function to start db - Jason S
-init_db()
+from .database import get_connection
 
 # Creates fastapi app instance with title, description, and version.
 app = FastAPI(title="Budget Tracker Backend", description="Backend for the Budget Tracker application", version="1.0.0")
@@ -18,6 +15,7 @@ app = FastAPI(title="Budget Tracker Backend", description="Backend for the Budge
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -42,7 +40,7 @@ def get_users():
 @app.get("/accounts/{user_id}")
 def get_accounts(user_id: int):
     conn = get_connection()
-    cursor = conn.execute("SELECT * FROM accounts WHERE user_id = ?", (user_id,))
+    cursor = conn.execute("SELECT * FROM accounts WHERE user_id = %s", (user_id,))
     accounts = cursor.fetchall()
     conn.close()
     return {"accounts": [dict(account) for account in accounts]}
@@ -51,7 +49,7 @@ def get_accounts(user_id: int):
 @app.get("/transactions/{account_id}")
 def get_transactions(account_id: int):
     conn = get_connection()
-    cursor = conn.execute("SELECT * FROM transactions WHERE account_id = ?", (account_id,))
+    cursor = conn.execute("SELECT * FROM transactions WHERE account_id = %s", (account_id,))
     transactions = cursor.fetchall()
     conn.close()
     return {"transactions": [dict(transaction) for transaction in transactions]}
@@ -60,7 +58,7 @@ def get_transactions(account_id: int):
 @app.get("/categories/{user_id}")
 def get_categories(user_id: int):
     conn = get_connection()
-    cursor = conn.execute("SELECT * FROM categories WHERE user_id = ?", (user_id,))
+    cursor = conn.execute("SELECT * FROM categories WHERE user_id = %s", (user_id,))
     categories = cursor.fetchall()
     conn.close()
     return {"categories": [dict(category) for category in categories]}
@@ -69,7 +67,7 @@ def get_categories(user_id: int):
 @app.get("/budgets/{user_id}")
 def get_budgets(user_id: int):
     conn = get_connection()
-    cursor = conn.execute("SELECT * FROM budgets WHERE user_id = ?", (user_id,))
+    cursor = conn.execute("SELECT * FROM budgets WHERE user_id = %s", (user_id,))
     budgets = cursor.fetchall()
     conn.close()
     return {"budgets": [dict(budget) for budget in budgets]}
@@ -107,11 +105,11 @@ def create_user(user: dict):
     plain_password = user["password"]
     hashed_password = hashlib.sha256(plain_password.encode('utf-8')).hexdigest()
     cursor = conn.execute(
-        "INSERT INTO user_profile (email, password_hash) VALUES (?, ?)",
+        "INSERT INTO user_profile (email, password_hash) VALUES (%s, %s) RETURNING id",
         (user["email"], hashed_password)
     )
     conn.commit()
-    user_id = cursor.lastrowid
+    user_id = cursor.fetchone()['id']
     conn.close()
     return {"user_id": user_id}   
 
@@ -119,9 +117,9 @@ def create_user(user: dict):
 @app.post("/accounts")
 def create_account(account: dict):  
     conn = get_connection()
-    cursor = conn.execute("INSERT INTO accounts (user_id, name) VALUES (?, ?)", (account["user_id"], account["name"]))
+    cursor = conn.execute("INSERT INTO accounts (user_id, name) VALUES (%s, %s) RETURNING id", (account["user_id"], account["name"]))
     conn.commit()
-    account_id = cursor.lastrowid
+    account_id = cursor.fetchone()['id']
     conn.close()
     return {"account_id": account_id}
 
@@ -134,7 +132,7 @@ def create_transaction(transaction: dict):
         """
         INSERT INTO transactions
         (account_id, description, amount, income, expenses, category, date)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
         """,
         (
             transaction["account_id"],
@@ -148,7 +146,7 @@ def create_transaction(transaction: dict):
     )
 
     conn.commit()
-    transaction_id = cursor.lastrowid
+    transaction_id = cursor.fetchone()['id']
     conn.close()
 
     return {"transaction_id": transaction_id}
@@ -158,10 +156,10 @@ def create_transaction(transaction: dict):
 def create_category(category: dict):
     conn = get_connection()
     cursor = conn.execute(
-        "INSERT INTO categories (user_id, name, type) VALUES (?, ?, ?)", (category["user_id"], category["name"], category["type"])
+        "INSERT INTO categories (user_id, name, type) VALUES (%s, %s, %s) RETURNING id", (category["user_id"], category["name"], category["type"])
     )
     conn.commit()
-    category_id = cursor.lastrowid
+    category_id = cursor.fetchone()['id']
     conn.close()
     return {"category_id": category_id}
 
@@ -170,10 +168,10 @@ def create_category(category: dict):
 def create_budget(budget: dict):
     conn = get_connection()
     cursor = conn.execute(
-        "INSERT INTO budgets (user_id, name, start_date, end_date) VALUES (?, ?, ?, ?)", (budget["user_id"], budget["name"], budget["start_date"], budget["end_date"])
+        "INSERT INTO budgets (user_id, name, start_date, end_date) VALUES (%s, %s, %s, %s) RETURNING id", (budget["user_id"], budget["name"], budget["start_date"], budget["end_date"])
     )
     conn.commit()
-    budget_id = cursor.lastrowid
+    budget_id = cursor.fetchone()['id']
     conn.close()
     return {"budget_id": budget_id}
 
@@ -182,7 +180,7 @@ def create_budget(budget: dict):
 def create_expense(expense: dict):
     conn = get_connection()
     cursor = conn.execute(
-        "INSERT INTO transactions (account_id, description, amount, income, expenses, category, date) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO transactions (account_id, description, amount, income, expenses, category, date) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
         (
             expense.get("account_id", 1),
             expense.get("title"),
@@ -194,7 +192,7 @@ def create_expense(expense: dict):
         )
     )
     conn.commit()
-    expense_id = cursor.lastrowid
+    expense_id = cursor.fetchone()['id']
     conn.close()
     return {"expense_id": expense_id}
 
@@ -203,7 +201,8 @@ def create_expense(expense: dict):
 def login(login: dict):
     conn = get_connection() #(login: dict):  is this right?
     hashed_password = hashlib.sha256(login["password"].encode('utf-8')).hexdigest()
-    user = conn.execute("SELECT * FROM user_profile WHERE email=? AND password_hash=?",(login["email"], hashed_password),).fetchone()
+    cursor = conn.execute("SELECT * FROM user_profile WHERE email=%s AND password_hash=%s",(login["email"], hashed_password),)
+    user = cursor.fetchone()
     #conn.commit()
     conn.close()
     #send error if incorrecy -JasonS
@@ -229,7 +228,7 @@ def update_password():
 @app.delete("/users/{user_id}")
 def delete_user(user_id: int):
     conn = get_connection()
-    conn.execute("DELETE FROM user_profile WHERE id = ?", (user_id,))
+    conn.execute("DELETE FROM user_profile WHERE id = %s", (user_id,))
     conn.commit()
     conn.close()
     return {"message": "User deleted successfully."}
@@ -238,7 +237,7 @@ def delete_user(user_id: int):
 @app.delete("/accounts/{account_id}")
 def delete_account(account_id: int):
     conn = get_connection()
-    conn.execute("DELETE FROM accounts WHERE id = ?", (account_id,))
+    conn.execute("DELETE FROM accounts WHERE id = %s", (account_id,))
     conn.commit()
     conn.close()
     return {"message": "Account deleted successfully."}
@@ -247,7 +246,7 @@ def delete_account(account_id: int):
 @app.delete("/transactions/{transaction_id}")
 def delete_transaction(transaction_id: int):
     conn = get_connection()
-    conn.execute("DELETE FROM transactions WHERE id = ?", (transaction_id,))
+    conn.execute("DELETE FROM transactions WHERE id = %s", (transaction_id,))
     conn.commit()
     conn.close()
     return {"message": "Transaction deleted successfully."}
@@ -256,7 +255,7 @@ def delete_transaction(transaction_id: int):
 @app.delete("/categories/{category_id}")
 def delete_category(category_id: int):
     conn = get_connection()
-    conn.execute("DELETE FROM categories WHERE id = ?", (category_id,))
+    conn.execute("DELETE FROM categories WHERE id = %s", (category_id,))
     conn.commit()
     conn.close()
     return {"message": "Category deleted successfully."}
@@ -265,7 +264,7 @@ def delete_category(category_id: int):
 @app.delete("/budgets/{budget_id}")
 def delete_budget(budget_id: int):
     conn = get_connection()
-    conn.execute("DELETE FROM budgets WHERE id = ?", (budget_id,))
+    conn.execute("DELETE FROM budgets WHERE id = %s", (budget_id,))
     conn.commit()
     conn.close()
     return {"message": "Budget deleted successfully."}
@@ -277,401 +276,262 @@ def delete_budget(budget_id: int):
 # SAVINGS GOALS TRACKER
 # ============================================================
 
-# Retrieves all savings goals belonging to a specific user.
-# The frontend will call this endpoint when the Savings Goals
-# page opens so previously saved goals can be displayed.
+# Check that a user ID or amount is a positive whole number.
+def valid_positive_int(value):
+    return type(value) is int and value > 0
+
+
+# Validate the information used to create or edit a goal.
+def validate_goal(data):
+    user_id = data.get("user_id")
+    name = data.get("name")
+    target = data.get("target_cents")
+
+    if not valid_positive_int(user_id):
+        raise HTTPException(400, "A valid user ID is required.")
+
+    if not isinstance(name, str) or not name.strip():
+        raise HTTPException(400, "Please enter a goal name.")
+
+    if not valid_positive_int(target):
+        raise HTTPException(400, "Target amount must be greater than zero.")
+
+    return user_id, name.strip(), target
+
+
+# Award 25 Owl Points only once per completed goal.
+# Runs inside the same database transaction as the goal update.
+def award_goal_points(conn, goal_id, user_id):
+    rewarded = conn.execute(
+        """
+        UPDATE savings_goals
+        SET reward_awarded = TRUE
+        WHERE id = %s AND user_id = %s AND reward_awarded = FALSE
+        RETURNING id
+        """,
+        (goal_id, user_id)
+    ).fetchone()
+
+    if not rewarded:
+        return 0
+
+    # Create the user's starting balance if needed.
+    conn.execute(
+        """
+        INSERT INTO owl_points (user_id, balance)
+        VALUES (%s, 150)
+        ON CONFLICT (user_id) DO NOTHING
+        """,
+        (user_id,)
+    )
+
+    conn.execute(
+        "UPDATE owl_points SET balance = balance + 25 WHERE user_id = %s",
+        (user_id,)
+    )
+
+    return 25
+
+
+# Retrieve a user's saved goals.
 @app.get("/savings-goals/{user_id}")
 def get_savings_goals(user_id: int):
-    conn = get_connection()
-
-    try:
-        # Only retrieve goals associated with this user ID.
+    with get_connection() as conn:
         goals = conn.execute(
             """
             SELECT id, user_id, name, target_cents,
                    saved_cents, reward_awarded, created_at
             FROM savings_goals
-            WHERE user_id = ?
+            WHERE user_id = %s
             ORDER BY id DESC
             """,
             (user_id,)
         ).fetchall()
 
-        # Convert database rows into JSON-compatible dictionaries.
-        return {"goals": [dict(goal) for goal in goals]}
-
-    finally:
-        # Always close the database connection.
-        conn.close()
+    return {"goals": goals}
 
 
-# Creates a new savings goal for a registered user.
-# The goal begins with $0 saved and no completion reward.
+# Create a savings goal with no money saved initially.
 @app.post("/savings-goals")
 def create_savings_goal(goal: dict):
-    # Retrieve and validate the information from React.
-    user_id = goal.get("user_id")
-    name = goal.get("name", "")
-    target_cents = goal.get("target_cents")
+    user_id, name, target = validate_goal(goal)
 
-    if not isinstance(user_id, int) or isinstance(user_id, bool):
-        raise HTTPException(
-            status_code=400,
-            detail="A valid user ID is required."
-        )
-
-    if not isinstance(name, str) or not name.strip():
-        raise HTTPException(
-            status_code=400,
-            detail="Please enter a goal name."
-        )
-
-    if (
-        not isinstance(target_cents, int)
-        or isinstance(target_cents, bool)
-        or target_cents <= 0
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail="Target amount must be greater than zero."
-        )
-
-    conn = get_connection()
-
-    try:
-        # Confirm that the user exists before creating the goal.
+    with get_connection() as conn:
         user = conn.execute(
-            "SELECT id FROM user_profile WHERE id = ?",
+            "SELECT id FROM user_profile WHERE id = %s",
             (user_id,)
         ).fetchone()
 
-        if user is None:
-            raise HTTPException(
-                status_code=404,
-                detail="User not found."
-            )
+        if not user:
+            raise HTTPException(404, "User not found.")
 
-        # Save the new goal using integer cents.
-        cursor = conn.execute(
+        created = conn.execute(
             """
-            INSERT INTO savings_goals
-                (user_id, name, target_cents, saved_cents, reward_awarded)
-            VALUES (?, ?, ?, 0, 0)
+            INSERT INTO savings_goals (user_id, name, target_cents)
+            VALUES (%s, %s, %s)
+            RETURNING id
             """,
-            (user_id, name.strip(), target_cents)
-        )
+            (user_id, name, target)
+        ).fetchone()
 
-        conn.commit()
-
-        return {
-            "goal_id": cursor.lastrowid,
-            "message": "Savings goal created successfully."
-        }
-
-    finally:
-        # Always close the database connection.
-        conn.close()
+    return {
+        "goal_id": created["id"],
+        "message": "Savings goal created successfully."
+    }
 
 
-# Updates the name or target amount of an existing savings goal.
-# Contributions already saved toward the goal are preserved.
+# Edit a goal without removing its saved contributions.
 @app.put("/savings-goals/{goal_id}")
 def update_savings_goal(goal_id: int, update: dict):
-    user_id = update.get("user_id")
-    name = update.get("name")
-    target_cents = update.get("target_cents")
+    user_id, name, target = validate_goal(update)
 
-    # Validate the information submitted by the frontend.
-    if not isinstance(user_id, int) or isinstance(user_id, bool):
-        raise HTTPException(
-            status_code=400,
-            detail="A valid user ID is required."
-        )
-
-    if not isinstance(name, str) or not name.strip():
-        raise HTTPException(
-            status_code=400,
-            detail="Please enter a goal name."
-        )
-
-    if (
-        not isinstance(target_cents, int)
-        or isinstance(target_cents, bool)
-        or target_cents <= 0
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail="Target amount must be greater than zero."
-        )
-
-    conn = get_connection()
-
-    try:
-        # Find the goal and verify that it belongs to this user.
+    with get_connection() as conn:
         goal = conn.execute(
             """
-            SELECT saved_cents
+            SELECT saved_cents, reward_awarded
             FROM savings_goals
-            WHERE id = ? AND user_id = ?
+            WHERE id = %s AND user_id = %s
+            FOR UPDATE
             """,
             (goal_id, user_id)
         ).fetchone()
 
-        if goal is None:
+        if not goal:
+            raise HTTPException(404, "Savings goal not found.")
+
+        if target < goal["saved_cents"]:
             raise HTTPException(
-                status_code=404,
-                detail="Savings goal not found."
+                400, "Target cannot be lower than the amount already saved."
             )
 
-        # Do not allow a new target below the already saved amount.
-        if target_cents < goal["saved_cents"]:
-            raise HTTPException(
-                status_code=400,
-                detail="Target cannot be lower than the amount already saved."
-            )
-
-        # Update only the name and target.
         conn.execute(
             """
             UPDATE savings_goals
-            SET name = ?, target_cents = ?
-            WHERE id = ? AND user_id = ?
+            SET name = %s, target_cents = %s
+            WHERE id = %s AND user_id = %s
             """,
-            (name.strip(), target_cents, goal_id, user_id)
+            (name, target, goal_id, user_id)
         )
 
-        conn.commit()
+        # Also reward completion if an edited target reaches 100%.
+        if target == goal["saved_cents"] and not goal["reward_awarded"]:
+            award_goal_points(conn, goal_id, user_id)
 
-        return {
-            "message": "Savings goal updated successfully."
-        }
-
-    finally:
-        conn.close()
+    return {"message": "Savings goal updated successfully."}
 
 
-# Deletes a savings goal belonging to the specified user.
-# Associated contributions are automatically deleted because
-# savings_contributions uses ON DELETE CASCADE.
+# Delete a goal and its contribution records.
 @app.delete("/savings-goals/{goal_id}")
 def delete_savings_goal(goal_id: int, user_id: int):
-    conn = get_connection()
+    if not valid_positive_int(user_id):
+        raise HTTPException(400, "A valid user ID is required.")
 
-    try:
-        # Verify that the goal exists and belongs to the user.
-        goal = conn.execute(
-            """
-            SELECT id
-            FROM savings_goals
-            WHERE id = ? AND user_id = ?
-            """,
-            (goal_id, user_id)
-        ).fetchone()
-
-        if goal is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Savings goal not found."
-            )
-
-        # Delete the goal and its contribution history.
-        conn.execute(
+    with get_connection() as conn:
+        deleted = conn.execute(
             """
             DELETE FROM savings_goals
-            WHERE id = ? AND user_id = ?
-            """,
-            (goal_id, user_id)
-        )
-
-        conn.commit()
-
-        return {
-            "message": "Savings goal deleted successfully."
-        }
-
-    finally:
-        conn.close()
-
-
-# ============================================================
-# SAVINGS CONTRIBUTIONS AND COMPLETION REWARDS
-# ============================================================
-
-# Adds savings toward a goal and awards 25 Owl Points
-# when the goal is completed for the first time.
-#
-# Savings contributions are allocations, not expenses.
-# They are stored separately from the transactions table.
-@app.post("/savings-goals/{goal_id}/contributions")
-def add_savings_contribution(goal_id: int, contribution: dict):
-
-    user_id = contribution.get("user_id")
-    amount_cents = contribution.get("amount_cents")
-
-    # Validate the user ID.
-    if not isinstance(user_id, int) or isinstance(user_id, bool):
-        raise HTTPException(
-            status_code=400,
-            detail="A valid user ID is required."
-        )
-
-    # Contributions must be positive integer amounts in cents.
-    if (
-        not isinstance(amount_cents, int)
-        or isinstance(amount_cents, bool)
-        or amount_cents <= 0
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail="Contribution must be greater than zero."
-        )
-
-    conn = get_connection()
-
-    try:
-        # Start a write transaction.
-        # The contribution and any reward must succeed together.
-        conn.execute("BEGIN IMMEDIATE")
-
-        # Find the goal and verify that it belongs to the user.
-        goal = conn.execute(
-            """
-            SELECT id, target_cents, saved_cents, reward_awarded
-            FROM savings_goals
-            WHERE id = ? AND user_id = ?
+            WHERE id = %s AND user_id = %s
+            RETURNING id
             """,
             (goal_id, user_id)
         ).fetchone()
 
-        if goal is None:
+        if not deleted:
+            raise HTTPException(404, "Savings goal not found.")
+
+    return {"message": "Savings goal deleted successfully."}
+
+
+# ============================================================
+# SAVINGS CONTRIBUTIONS
+# ============================================================
+
+# Add money to a goal and reward its first completion.
+# Savings allocations are not recorded as expenses.
+@app.post("/savings-goals/{goal_id}/contributions")
+def add_savings_contribution(goal_id: int, contribution: dict):
+    user_id = contribution.get("user_id")
+    amount = contribution.get("amount_cents")
+
+    if not valid_positive_int(user_id):
+        raise HTTPException(400, "A valid user ID is required.")
+
+    if not valid_positive_int(amount):
+        raise HTTPException(400, "Contribution must be greater than zero.")
+
+    with get_connection() as conn:
+        # Lock the goal until the contribution is committed.
+        goal = conn.execute(
+            """
+            SELECT target_cents, saved_cents, reward_awarded
+            FROM savings_goals
+            WHERE id = %s AND user_id = %s
+            FOR UPDATE
+            """,
+            (goal_id, user_id)
+        ).fetchone()
+
+        if not goal:
+            raise HTTPException(404, "Savings goal not found.")
+
+        new_saved = goal["saved_cents"] + amount
+
+        if new_saved > goal["target_cents"]:
             raise HTTPException(
-                status_code=404,
-                detail="Savings goal not found."
+                400, "Contribution exceeds the remaining goal amount."
             )
 
-        # Calculate the new savings balance.
-        new_saved_cents = goal["saved_cents"] + amount_cents
-
-        # Do not allow contributions beyond the goal's target.
-        if new_saved_cents > goal["target_cents"]:
-            raise HTTPException(
-                status_code=400,
-                detail="Contribution exceeds the remaining goal amount."
-            )
-
-        # Record the individual savings contribution.
+        # Save the contribution history.
         conn.execute(
             """
-            INSERT INTO savings_contributions
-                (goal_id, amount_cents)
-            VALUES (?, ?)
+            INSERT INTO savings_contributions (goal_id, amount_cents)
+            VALUES (%s, %s)
             """,
-            (goal_id, amount_cents)
+            (goal_id, amount)
         )
 
-        # Update the total saved toward the goal.
+        # Update the goal's saved total.
         conn.execute(
             """
             UPDATE savings_goals
-            SET saved_cents = ?
-            WHERE id = ? AND user_id = ?
+            SET saved_cents = %s
+            WHERE id = %s AND user_id = %s
             """,
-            (new_saved_cents, goal_id, user_id)
+            (new_saved, goal_id, user_id)
         )
 
         points_earned = 0
 
-        # Check if the goal has reached 100% for the first time.
-        if (
-            new_saved_cents == goal["target_cents"]
-            and goal["reward_awarded"] == 0
-        ):
+        if new_saved == goal["target_cents"]:
+            points_earned = award_goal_points(conn, goal_id, user_id)
 
-            # Create a points balance if the user does not have one.
-            # The existing Dashboard starts users with 150 points.
-            conn.execute(
-                """
-                INSERT OR IGNORE INTO owl_points
-                    (user_id, balance)
-                VALUES (?, 150)
-                """,
-                (user_id,)
-            )
+    return {
+        "message": "Savings contribution recorded successfully.",
+        "saved_cents": new_saved,
+        "points_earned": points_earned
+    }
 
-            # Award exactly 25 Owl Points.
-            conn.execute(
-                """
-                UPDATE owl_points
-                SET balance = balance + 25
-                WHERE user_id = ?
-                """,
-                (user_id,)
-            )
-
-            # Mark the goal as already rewarded.
-            # This prevents the same goal from awarding points again.
-            conn.execute(
-                """
-                UPDATE savings_goals
-                SET reward_awarded = 1
-                WHERE id = ? AND user_id = ?
-                """,
-                (goal_id, user_id)
-            )
-
-            points_earned = 25
-
-        # Save all database changes together.
-        conn.commit()
-
-        return {
-            "message": "Savings contribution recorded successfully.",
-            "saved_cents": new_saved_cents,
-            "points_earned": points_earned
-        }
-
-    except Exception:
-        # Undo all changes if any part of the operation fails.
-        conn.rollback()
-        raise
-
-    finally:
-        # Always close the database connection.
-        conn.close()
 
 # ============================================================
-# OWL POINTS REWARDS
+# OWL POINTS
 # ============================================================
 
-# Retrieves a user's Owl Points balance from the database.
-# Users begin with 150 points, matching the existing Dashboard.
+# Retrieve the user's Owl Points balance.
+# Users begin with 150 points.
 @app.get("/owl-points/{user_id}")
 def get_owl_points(user_id: int):
-    conn = get_connection()
-
-    try:
-        # Check whether the user exists.
+    with get_connection() as conn:
         user = conn.execute(
-            "SELECT id FROM user_profile WHERE id = ?",
+            "SELECT id FROM user_profile WHERE id = %s",
             (user_id,)
         ).fetchone()
 
-        if user is None:
-            raise HTTPException(
-                status_code=404,
-                detail="User not found."
-            )
+        if not user:
+            raise HTTPException(404, "User not found.")
 
-        # Retrieve the user's current points balance.
         points = conn.execute(
-            "SELECT balance FROM owl_points WHERE user_id = ?",
+            "SELECT balance FROM owl_points WHERE user_id = %s",
             (user_id,)
         ).fetchone()
 
-        # A user without a record starts with 150 Owl Points.
-        balance = points["balance"] if points else 150
-
-        return {"balance": balance}
-
-    finally:
-        conn.close()
+    return {"balance": points["balance"] if points else 150}

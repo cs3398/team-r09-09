@@ -72,6 +72,12 @@ function Dashboard({ userId, onSignOut, onOpenCalendar, onOpenSavings }) {
   const [budget, setBudget] = useState(2500);
   const [budgetInput, setBudgetInput] = useState('2500');
 
+
+  // Total money currently allocated to Savings Goals.
+  // Savings reduce available money but are not expenses.
+  const [totalSavingsCents, setTotalSavingsCents] = useState(0);
+
+
   // Stores the account ID belonging to the logged-in user.
   const [accountId, setAccountId] = useState(null);
 
@@ -90,6 +96,26 @@ function Dashboard({ userId, onSignOut, onOpenCalendar, onOpenSavings }) {
 
   const [streak, setStreak] = useState(3);
   const [claimedCoupons, setClaimedCoupons] = useState([]);
+
+  // Stores the randomly generated code for each redeemed voucher.
+  const [voucherCodes, setVoucherCodes] = useState({});
+
+  // Generates a sample voucher code for demonstration purposes.
+  function generateVoucherCode() {
+    const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = 'OWL-';
+
+    for (let i = 0; i < 8; i++) {
+      code += characters[Math.floor(Math.random() * characters.length)];
+
+      if (i === 3) {
+        code += '-';
+      }
+    }
+
+    return code;
+  }
+
   const [selectedCoupon, setSelectedCoupon] = useState(null);
   const [zipCode, setZipCode] = useState('78660'); // Pflugerville, TX default
   const [toast, setToast] = useState(null);
@@ -140,6 +166,49 @@ function Dashboard({ userId, onSignOut, onOpenCalendar, onOpenSavings }) {
       cancelled = true;
     };
   }, [userId]);
+
+
+  // Load the total money allocated toward Savings Goals.
+  // This is separate from actual expenses.
+  useEffect(() => {
+    if (userId == null) {
+      setTotalSavingsCents(0);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadSavingsTotal() {
+      try {
+        const response = await fetch(`${API_URL}/savings-goals/${userId}`);
+
+        if (!response.ok) {
+          throw new Error('Unable to retrieve Savings Goals.');
+        }
+
+        const data = await response.json();
+
+        // Add up the money currently saved across all goals.
+        const total = (data.goals || []).reduce(
+          (sum, goal) => sum + Number(goal.saved_cents),
+          0
+        );
+
+        if (!cancelled) {
+          setTotalSavingsCents(total);
+        }
+      } catch (error) {
+        console.error('Savings Goals loading error:', error);
+      }
+    }
+
+    loadSavingsTotal();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
 
 
   // Retrieves an existing account, or creates one for a new user.
@@ -350,7 +419,11 @@ function Dashboard({ userId, onSignOut, onOpenCalendar, onOpenSavings }) {
   );
 
   const budgetCents = Math.round(budget * 100);
-  const remainingCents = budgetCents - totalSpentCents;
+  
+  // Savings are reserved funds, not actual expenses.
+  // Subtract them only from the money available to spend.
+  const remainingCents = budgetCents - totalSpentCents - totalSavingsCents;
+
 
   // Group saved expenses by category for the spending pie chart.
   const spendingByCategory = transactions.reduce((totals, transaction) => {
@@ -818,13 +891,25 @@ function Dashboard({ userId, onSignOut, onOpenCalendar, onOpenSavings }) {
                     ) : (
                       <button 
                         disabled={!canAfford}
-                        onClick={() => {
-                          setUserPoints(prev => prev - coupon.cost);
-                          setClaimedCoupons(prev => [...prev, coupon.id]);
-                          setSelectedCoupon(coupon);
-                          setToast(`Unlocked ${coupon.title}!`);
-                          setTimeout(() => setToast(null), 3000);
-                        }}
+                    
+                 onClick={() => {
+                    // Generate a unique-looking demo code for this voucher.
+                   const newCode = generateVoucherCode();
+
+                  // Remember the code while the Dashboard is open.
+                  setVoucherCodes(prev => ({
+                     ...prev,
+                   [coupon.id]: newCode
+                   }));
+
+               // Keep the existing points and redemption behavior.
+                  setUserPoints(prev => prev - coupon.cost);
+                   setClaimedCoupons(prev => [...prev, coupon.id]);
+                  setSelectedCoupon(coupon);
+                  setToast(`Unlocked ${coupon.title}!`);
+                    setTimeout(() => setToast(null), 3000);
+                 }}
+
                         style={{
                           width: '100%', padding: '10px', borderRadius: '10px', border: 'none',
                           background: canAfford ? '#3b82f6' : '#334155',
@@ -848,6 +933,50 @@ function Dashboard({ userId, onSignOut, onOpenCalendar, onOpenSavings }) {
               padding: '20px', marginTop: '20px'
             }}>
               <h4 style={{ margin: '0 0 8px 0', color: '#38bdf8' }}>🎉 Active Voucher: {selectedCoupon.title}</h4>
+              
+          {/* Display the demo code generated when this voucher was redeemed. */}
+          <div style={{
+            background: '#0f172a',
+            border: '1px dashed #38bdf8',
+            borderRadius: '10px',
+           padding: '16px',
+            marginBottom: '16px',
+            textAlign: 'center'
+          }}>
+            <p style={{
+              color: '#94a3b8',
+              fontSize: '12px',
+              margin: '0 0 8px 0'
+            }}>
+              YOUR VOUCHER CODE (DEMO)
+            </p>
+
+            <strong style={{
+              color: '#38bdf8',
+              fontSize: '24px',
+              letterSpacing: '3px'
+            }}>
+              {voucherCodes[selectedCoupon.id]}
+            </strong>
+
+            <div style={{ marginTop: '12px' }}>
+              <button
+                type="button"
+                onClick={() => navigator.clipboard.writeText(voucherCodes[selectedCoupon.id] || '')}
+                style={{
+                 background: '#334155',
+                 color: '#f8fafc',
+                 border: 'none',
+                  borderRadius: '8px',
+                  padding: '8px 16px',
+                  cursor: 'pointer'
+               }}
+              >
+                Copy Code
+              </button>
+            </div>
+          </div>
+
               <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#94a3b8' }}>
                 Search local venues near ZIP <strong>{zipCode}</strong>:
               </p>
