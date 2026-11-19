@@ -62,10 +62,9 @@ function formatMoney(cents) {
   });
 }
 
-function Dashboard({ userId, onSignOut, onOpenCalendar }) {
+function Dashboard({ userId, userPoints, setUserPoints, onSignOut, onOpenCalendar, onOpenGarden }) {
   // The budget is temporary React state until the backend
   // provides endpoints for storing and retrieving budgets.
-  const [userPoints, setUserPoints] = useState(150);
   const [showRewardsModal, setShowRewardsModal] = useState(false);
   const UNLOCK_THRESHOLD = 200;
   const pointsNeeded = Math.max(0, UNLOCK_THRESHOLD - userPoints);
@@ -398,8 +397,14 @@ function Dashboard({ userId, onSignOut, onOpenCalendar }) {
           <button
             type="button"
             className="dashboard-button"
-            onClick={onOpenCalendar}>
-              
+            onClick={onOpenGarden}>
+            🌱 Garden
+            </button>
+            <button
+              type="button"
+              className="dashboard-button"
+              onClick={onOpenCalendar}
+            >  
               Calendar 
             </button>
 

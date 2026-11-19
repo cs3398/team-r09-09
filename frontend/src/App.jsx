@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Dashboard from './components/Dashboard';
 import Calendar from './components/Calendar';
+import Garden from './components/Garden';
 import './App.css';
 
 // Local address of the team's FastAPI backend.
@@ -18,6 +19,9 @@ function App() {
   const [userId, setUserId] = useState(null);
   const [page, setPage] = useState('dashboard'); //track page - Json S
 
+  // For testing:
+  const [userPoints, setUserPoints] = useState(10000);
+  
   // Stores the values entered into the authentication form.
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -148,12 +152,24 @@ function App() {
       />
     );
   }
-
+  if (page === 'garden') {
+        return (
+          <Garden
+            userId={userId}
+            userPoints={userPoints}
+            setUserPoints={setUserPoints}
+            onBack={() => setPage('dashboard')}
+          />
+        );
+      }
   return (
     <Dashboard
       userId={userId}
+      userPoints={userPoints}
+      setUserPoints={setUserPoints}
       onSignOut={handleSignOut}
       onOpenCalendar={() => setPage('calendar')}
+      onOpenGarden={() => setPage('garden')}
     />
   );
 }
