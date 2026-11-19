@@ -2,8 +2,8 @@
 
 ## Applications used:
 
-Backend: Python with FastAPI framework  
-Frontend: JavaScript with React  
+Backend: Python with FastAPI framework, Plaid API
+Frontend: JavaScript with React, React-Plaid-Link UI  
 Database: Supabase PostgreSQL  
 
 ## Software to Download:
@@ -59,6 +59,7 @@ python3 -m uvicorn JustinN_backend.main:app --reload --port 8001 (MacOS / Linux)
 ## 1. Navigate to frontend file and install npm
 cd frontend  
 npm install  
+npm install react-plaid-link
 
 ## 2. Start up Frontend
 npm run dev  
