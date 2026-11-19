@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Dashboard from './components/Dashboard';
 import Calendar from './components/Calendar';
+import Onboarding from './components/Onboarding';
 import './App.css';
 
 // Local address of the team's FastAPI backend.
@@ -13,8 +14,9 @@ function App() {
   // Controls whether the user sees the login or signup form.
   const [isSignUp, setIsSignUp] = useState(false);
 
-  // Tracks the logged-in user and whether to display the dashboard.
+  // Tracks the logged-in user and whether to display the dashboard or onboarding page.
   const [showDashboard, setShowDashboard] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
   const [userId, setUserId] = useState(null);
   const [page, setPage] = useState('dashboard'); //track page - Json S
 
@@ -98,7 +100,14 @@ function App() {
         // the correct account and expense transactions.
         setUserId(data.user_id);
         setPassword('');
-        setShowDashboard(true);
+        // Check if the user has completed onboarding.
+        if (data.onboarding_completed) {
+          setShowDashboard(true);
+          setShowOnboarding(false);
+        } else {
+          setShowDashboard(false);
+          setShowOnboarding(true);
+        }
       }
     } catch (error) {
       setMessage(error.message || 'Could not connect to the backend.');
@@ -127,8 +136,23 @@ function App() {
     setPassword('');
     setConfirmPassword('');
     setMessage('');
+    setShowOnboarding(false);
   }
-
+// Displays the onboarding page if the user has not completed it.
+// The onboarding page collects the user's financial information.
+if (showOnboarding) {
+  return (
+    <Onboarding
+      userId={userId}
+      onComplete={() => {
+        setShowOnboarding(false);
+        setShowDashboard(true);
+        setPage('dashboard');
+      }}
+      onSignOut={handleSignOut}
+    />
+  );
+}
   // Only a successful login can display the dashboard.
   // The user ID is passed to Dashboard for database requests.
   /*if (showDashboard) {

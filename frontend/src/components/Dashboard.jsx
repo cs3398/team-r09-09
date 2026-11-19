@@ -69,8 +69,10 @@ function Dashboard({ userId, onSignOut, onOpenCalendar }) {
   const [showRewardsModal, setShowRewardsModal] = useState(false);
   const UNLOCK_THRESHOLD = 200;
   const pointsNeeded = Math.max(0, UNLOCK_THRESHOLD - userPoints);
-  const [budget, setBudget] = useState(2500);
-  const [budgetInput, setBudgetInput] = useState('2500');
+  // Unhard-coded budget values for the demo. The backend does not yet provide endpoints for storing and retrieving budgets.
+  const [budget, setBudget] = useState(0);
+  const [budgetInput, setBudgetInput] = useState('');
+  const [budgetId, setBudgetId] = useState(null);
 
   // Stores the account ID belonging to the logged-in user.
   const [accountId, setAccountId] = useState(null);
@@ -195,21 +197,117 @@ function Dashboard({ userId, onSignOut, onOpenCalendar }) {
     };
   }, [userId]);
 
-  // Updates the displayed monthly budget.
-  // This value is not saved in SQLite yet.
-  function handleUpdateBudget() {
-    const newBudget = Number(budgetInput);
+  // Retrieves the user's budget for the current month.
+  useEffect(() => {
+    let cancelled = false;
 
-    if (!Number.isFinite(newBudget) || newBudget < 0 ||
-        budgetInput.trim() === '') {
-      setMessage('Please enter a valid budget amount.');
-      return;
+    async function loadBudget() {
+      try {
+        const response = await fetch(
+          `${API_URL}/budgets/${userId}`
+        );
+
+        if (!response.ok) {
+          throw new Error('Unable to retrieve your budget.');
+        }
+
+        const data = await response.json();
+
+        // Find the budget covering the current month.
+        const today = new Date();
+        const currentDate = [
+          today.getFullYear(),
+          String(today.getMonth() + 1).padStart(2, '0'),
+          String(today.getDate()).padStart(2, '0')
+        ].join('-');
+
+        const savedBudget = data.budgets?.find(
+          (item) =>
+            item.start_date <= currentDate &&
+            item.end_date >= currentDate
+        );
+
+        if (!cancelled && savedBudget) {
+          // Save the budget ID for future updates.
+          setBudgetId(savedBudget.id);
+
+          // Convert cents to dollars.
+          const amount = savedBudget.amount / 100;
+
+          setBudget(amount);
+          setBudgetInput(String(amount));
+        }
+
+        if (!cancelled && !savedBudget) {
+          setMessage('No budget found for the current month.');
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setMessage(error.message);
+        }
+      }
     }
 
-    setBudget(newBudget);
-    setMessage('Budget updated for this session.');
+    if (userId != null) {
+      loadBudget();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  // Updates the displayed monthly budget.
+  // This value is now stored in the backend and retrieved on page load.
+  async function handleUpdateBudget() {
+  const newBudget = Number(budgetInput);
+
+  if (
+    !Number.isFinite(newBudget) ||
+    newBudget < 0 ||
+    budgetInput.trim() === ''
+  ) {
+    setMessage('Please enter a valid budget amount.');
+    return;
   }
 
+  if (budgetId == null) {
+    setMessage('No monthly budget was found.');
+    return;
+  }
+
+  const amountInCents = Math.round(newBudget * 100);
+
+  if (!Number.isSafeInteger(amountInCents)) {
+    setMessage('Please enter a valid budget amount.');
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `${API_URL}/budgets/${budgetId}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          amount: amountInCents
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Unable to update budget.');
+    }
+
+    setBudget(amountInCents / 100);
+    setBudgetInput(String(amountInCents / 100));
+    setMessage('Budget updated successfully!');
+  } catch (error) {
+    setMessage(error.message);
+  }
+}
   // Sends the new expense to FastAPI for permanent storage.
   async function handleRecordExpense(event) {
     event.preventDefault();

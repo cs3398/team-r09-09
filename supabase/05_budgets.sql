@@ -6,5 +6,7 @@ CREATE TABLE IF NOT EXISTS public.budgets (
     name TEXT NOT NULL,
     start_date TEXT NOT NULL,
     end_date TEXT NOT NULL,
+    amount INTEGER NOT NULL DEFAULT 0
+        CHECK (amount >= 0),
     CHECK (end_date >= start_date)
 );
