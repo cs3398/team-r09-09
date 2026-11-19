@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 
 import './Dashboard.css';
+import Plaid from "./Plaid";
 
 // Address of the Python FastAPI backend running on your Mac.
 const API_URL = 'http://127.0.0.1:8001';
@@ -209,6 +210,13 @@ function Dashboard({ userId, userPoints, setUserPoints, onSignOut, onOpenCalenda
     setMessage('Budget updated for this session.');
   }
 
+  async function handePlaidImport(resultMessage) {
+    const response = await fetch(`${API_URL}/transactions/${accountId}`);
+    const data = await response.json();
+    setTransactions(data.transactions  || []);
+    setMessage(resultMessage);
+  }
+
   // Sends the new expense to FastAPI for permanent storage.
   async function handleRecordExpense(event) {
     event.preventDefault();
@@ -244,7 +252,7 @@ function Dashboard({ userId, userPoints, setUserPoints, onSignOut, onOpenCalenda
 
     try {
       // Use the local calendar date rather than UTC so
-      // the saved date matches the user's current day.
+      //the saved date matches the user's current day.
       const today = new Date();
       const year = today.getFullYear();
       const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -461,6 +469,9 @@ function Dashboard({ userId, userPoints, setUserPoints, onSignOut, onOpenCalenda
             >  
               Calendar 
             </button>
+
+          
+           <Plaid accountId={accountId} onImported={handePlaidImport}/>
 
           <button
             type="button"
