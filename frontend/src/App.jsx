@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Dashboard from './components/Dashboard';
 import Calendar from './components/Calendar';
+import SavingsGoals from './components/SavingsGoals';
 import Onboarding from './components/Onboarding';
 import Garden from './components/Garden';
 import './App.css';
@@ -176,6 +177,15 @@ if (showOnboarding) {
       />
     );
   }
+  if (page === 'savings') {
+    return (
+      <SavingsGoals
+        userId={userId}
+        onBack={() => setPage('dashboard')}
+      />
+    );
+  }
+
   if (page === 'garden') {
         return (
           <Garden
@@ -193,6 +203,7 @@ if (showOnboarding) {
       setUserPoints={setUserPoints}
       onSignOut={handleSignOut}
       onOpenCalendar={() => setPage('calendar')}
+      onOpenSavings={() => setPage('savings')}
       onOpenGarden={() => setPage('garden')}
     />
   );

@@ -63,7 +63,15 @@ function formatMoney(cents) {
   });
 }
 
-function Dashboard({ userId, userPoints, setUserPoints, onSignOut, onOpenCalendar, onOpenGarden }) {
+function Dashboard({
+  userId,
+  onSignOut,
+  onOpenCalendar,
+  onOpenSavings,
+  onOpenGarden
+}) {
+  // Real Owl Points balance stored in Supabase.
+  const [userPoints, setUserPoints] = useState(0);
   // The budget is temporary React state until the backend
   // provides endpoints for storing and retrieving budgets.
   const [showRewardsModal, setShowRewardsModal] = useState(false);
@@ -73,6 +81,12 @@ function Dashboard({ userId, userPoints, setUserPoints, onSignOut, onOpenCalenda
   const [budget, setBudget] = useState(0);
   const [budgetInput, setBudgetInput] = useState('');
   const [budgetId, setBudgetId] = useState(null);
+
+
+  // Total money currently allocated to Savings Goals.
+  // Savings reduce available money but are not expenses.
+  const [totalSavingsCents, setTotalSavingsCents] = useState(0);
+
 
   // Stores the account ID belonging to the logged-in user.
   const [accountId, setAccountId] = useState(null);
@@ -92,6 +106,12 @@ function Dashboard({ userId, userPoints, setUserPoints, onSignOut, onOpenCalenda
 
   const [streak, setStreak] = useState(3);
   const [claimedCoupons, setClaimedCoupons] = useState([]);
+
+  // Stores redeemed voucher codes retrieved from Supabase.
+  const [voucherCodes, setVoucherCodes] = useState({});
+
+  
+
   const [selectedCoupon, setSelectedCoupon] = useState(null);
   const [zipCode, setZipCode] = useState('78660'); // Pflugerville, TX default
   const [toast, setToast] = useState(null);
@@ -103,6 +123,138 @@ function Dashboard({ userId, userPoints, setUserPoints, onSignOut, onOpenCalenda
     return { name: 'Fledgling Owl', icon: 'feather', badge: 'bg-cyan-400/10 border-cyan-400/30 text-cyan-400' };
   };
   const tier = getTier(userPoints);
+
+  // ============================================================
+  // LOAD OWL POINTS FROM THE BACKEND
+  // ============================================================
+
+  // Retrieve the user's saved Owl Points balance whenever
+  // the Dashboard opens or the logged-in user changes.
+  useEffect(() => {
+    if (userId == null) return;
+
+    let cancelled = false;
+
+    async function loadOwlPoints() {
+      try {
+        const response = await fetch(
+          `${API_URL}/owl-points/${userId}`
+        );
+
+        if (!response.ok) {
+          throw new Error("Unable to retrieve Owl Points.");
+        }
+
+        const data = await response.json();
+
+        // Update the Dashboard only while it is mounted.
+        if (!cancelled && Number.isInteger(data.balance)) {
+          setUserPoints(data.balance);
+        }
+      } catch (error) {
+        console.error("Owl Points loading error:", error);
+      }
+    }
+
+    loadOwlPoints();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  // Load redeemed vouchers and their saved codes from Supabase.
+  // This restores claimed vouchers after refresh or login.
+  useEffect(() => {
+    if (userId == null) {
+      setClaimedCoupons([]);
+      setVoucherCodes({});
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadRedeemedVouchers() {
+      try {
+        const response = await fetch(
+          `${API_URL}/redeemed-vouchers/${userId}`
+        );
+
+        if (!response.ok) {
+          throw new Error('Unable to load redeemed vouchers.');
+        }
+
+        const data = await response.json();
+        const vouchers = data.vouchers || [];
+
+        if (!cancelled) {
+          // Remember which vouchers were already redeemed.
+          setClaimedCoupons(vouchers.map(voucher => voucher.coupon_id));
+
+          // Restore each voucher's original demonstration code.
+          const savedCodes = {};
+          vouchers.forEach(voucher => {
+            savedCodes[voucher.coupon_id] = voucher.voucher_code;
+          });
+
+          setVoucherCodes(savedCodes);
+        }
+      } catch (error) {
+        console.error('Redeemed vouchers loading error:', error);
+      }
+    }
+
+    loadRedeemedVouchers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+
+
+  // Load the total money allocated toward Savings Goals.
+  // This is separate from actual expenses.
+  useEffect(() => {
+    if (userId == null) {
+      setTotalSavingsCents(0);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadSavingsTotal() {
+      try {
+        const response = await fetch(`${API_URL}/savings-goals/${userId}`);
+
+        if (!response.ok) {
+          throw new Error('Unable to retrieve Savings Goals.');
+        }
+
+        const data = await response.json();
+
+        // Add up the money currently saved across all goals.
+        const total = (data.goals || []).reduce(
+          (sum, goal) => sum + Number(goal.saved_cents),
+          0
+        );
+
+        if (!cancelled) {
+          setTotalSavingsCents(total);
+        }
+      } catch (error) {
+        console.error('Savings Goals loading error:', error);
+      }
+    }
+
+    loadSavingsTotal();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+
 
   // Retrieves an existing account, or creates one for a new user.
   // The account ID is required when saving transactions.
@@ -470,7 +622,11 @@ function Dashboard({ userId, userPoints, setUserPoints, onSignOut, onOpenCalenda
   );
 
   const budgetCents = Math.round(budget * 100);
-  const remainingCents = budgetCents - totalSpentCents;
+  
+  // Savings are reserved funds, not actual expenses.
+  // Subtract them only from the money available to spend.
+  const remainingCents = budgetCents - totalSpentCents - totalSavingsCents;
+
 
   // Group saved expenses by category for the spending pie chart.
   const spendingByCategory = transactions.reduce((totals, transaction) => {
@@ -571,6 +727,14 @@ function Dashboard({ userId, userPoints, setUserPoints, onSignOut, onOpenCalenda
 
           
            <Plaid accountId={accountId} onImported={handePlaidImport}/>
+
+          <button
+            type="button"
+            className="dashboard-button"
+            onClick={onOpenSavings}>
+  
+              Savings Goals
+            </button>
 
           <button
             type="button"
@@ -950,13 +1114,53 @@ function Dashboard({ userId, userPoints, setUserPoints, onSignOut, onOpenCalenda
                     ) : (
                       <button 
                         disabled={!canAfford}
-                        onClick={() => {
-                          setUserPoints(prev => prev - coupon.cost);
-                          setClaimedCoupons(prev => [...prev, coupon.id]);
-                          setSelectedCoupon(coupon);
-                          setToast(`Unlocked ${coupon.title}!`);
-                          setTimeout(() => setToast(null), 3000);
-                        }}
+
+                  
+                  onClick={async () => {
+                    try {
+                      // Redeem the voucher through the backend.
+                      const response = await fetch(`${API_URL}/redeemed-vouchers`, {
+                        method: 'POST',
+                       headers: {
+                          'Content-Type': 'application/json'
+                       },
+                       body: JSON.stringify({
+                          user_id: userId,
+                         coupon_id: coupon.id
+                       })
+                     });
+
+                      const data = await response.json();
+
+                      if (!response.ok) {
+                        throw new Error(data.detail || 'Voucher redemption failed.');
+                     }
+
+                     // Restore the balance returned by Supabase.
+                     setUserPoints(data.balance);
+
+                    // Save the permanent voucher code returned by the backend.
+                      setVoucherCodes(prev => ({
+                        ...prev,
+                        [coupon.id]: data.voucher_code
+                      }));
+
+                      // Mark the voucher as claimed.
+                      setClaimedCoupons(prev => [...prev, coupon.id]);
+
+                     // Show the existing voucher popup.
+                      setSelectedCoupon(coupon);
+                      setToast(`Unlocked ${coupon.title}!`);
+                    setTimeout(() => setToast(null), 3000);
+
+                    } catch (error) {
+                      console.error('Voucher redemption error:', error);
+                        setToast(error.message);
+                      setTimeout(() => setToast(null), 3000);
+                      }
+                  }}
+  
+
                         style={{
                           width: '100%', padding: '10px', borderRadius: '10px', border: 'none',
                           background: canAfford ? '#3b82f6' : '#334155',
@@ -980,6 +1184,50 @@ function Dashboard({ userId, userPoints, setUserPoints, onSignOut, onOpenCalenda
               padding: '20px', marginTop: '20px'
             }}>
               <h4 style={{ margin: '0 0 8px 0', color: '#38bdf8' }}>🎉 Active Voucher: {selectedCoupon.title}</h4>
+              
+          {/* Display the demo code generated when this voucher was redeemed. */}
+          <div style={{
+            background: '#0f172a',
+            border: '1px dashed #38bdf8',
+            borderRadius: '10px',
+           padding: '16px',
+            marginBottom: '16px',
+            textAlign: 'center'
+          }}>
+            <p style={{
+              color: '#94a3b8',
+              fontSize: '12px',
+              margin: '0 0 8px 0'
+            }}>
+              YOUR VOUCHER CODE (DEMO)
+            </p>
+
+            <strong style={{
+              color: '#38bdf8',
+              fontSize: '24px',
+              letterSpacing: '3px'
+            }}>
+              {voucherCodes[selectedCoupon.id]}
+            </strong>
+
+            <div style={{ marginTop: '12px' }}>
+              <button
+                type="button"
+                onClick={() => navigator.clipboard.writeText(voucherCodes[selectedCoupon.id] || '')}
+                style={{
+                 background: '#334155',
+                 color: '#f8fafc',
+                 border: 'none',
+                  borderRadius: '8px',
+                  padding: '8px 16px',
+                  cursor: 'pointer'
+               }}
+              >
+                Copy Code
+              </button>
+            </div>
+          </div>
+
               <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#94a3b8' }}>
                 Search local venues near ZIP <strong>{zipCode}</strong>:
               </p>

@@ -1,0 +1,221 @@
+
+/* Main Savings Goals page layout. */
+.savings-goals-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 32px;
+  color: #f5f5f5;
+}
+
+.savings-goals-page h1 {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.savings-goals-page > p {
+  color: #b8c0cc;
+  margin-bottom: 28px;
+}
+
+/* Shared inputs and buttons used throughout the savings page. */
+.savings-goals-page input {
+  padding: 14px;
+  border: 1px solid #485467;
+  border-radius: 10px;
+  background: #202b3c;
+  color: #ffffff;
+  font-size: 15px;
+  min-width: 0;
+}
+
+.savings-goals-page input::placeholder {
+  color: #a8b4c5;
+}
+
+.savings-goals-page button {
+  padding: 14px 22px;
+  border: none;
+  border-radius: 10px;
+  background: #67d5ad;
+  color: #152331;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.savings-goals-page button:hover {
+  background: #8ce5c4;
+}
+
+.savings-goals-page button:disabled,
+.savings-goals-page input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Button used to return to the main dashboard. */
+.savings-goals-page .savings-back-button {
+  margin-bottom: 24px;
+  background: #334155;
+  color: #f8fafc;
+}
+
+.savings-goals-page .savings-back-button:hover {
+  background: #475569;
+}
+
+/* Form for creating a new savings goal. */
+.savings-create-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.savings-create-form input {
+  flex: 1;
+  min-width: 180px;
+}
+
+/* Responsive grid containing the user's savings goals. */
+.savings-goals-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+/* Individual savings goal card. */
+.savings-goal-card {
+  padding: 24px;
+  border: 1px solid #435166;
+  border-radius: 16px;
+  background: #202b3c;
+}
+
+.savings-goal-card h2 {
+  margin: 0 0 14px;
+  font-size: 20px;
+}
+
+.savings-goal-card p {
+  color: #c9d1dc;
+}
+
+/* Native progress indicator for the saved amount. */
+.savings-goal-card progress {
+  width: 100%;
+  height: 14px;
+  margin-top: 12px;
+  accent-color: #67d5ad;
+}
+
+.savings-progress-text {
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.savings-remaining {
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+/* Message displayed when a savings goal reaches 100%. */
+.savings-goal-card .savings-complete-message {
+  color: #67d5ad;
+  font-weight: 700;
+}
+
+/* Input and button used to allocate money toward a goal. */
+.savings-contribution {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.savings-contribution input {
+  flex: 1;
+  min-width: 130px;
+}
+
+.savings-contribution button {
+  flex-shrink: 0;
+}
+
+/* Buttons for editing and deleting existing savings goals. */
+.savings-goal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.savings-goals-page .savings-edit-button {
+  background: #334155;
+  color: #f8fafc;
+}
+
+.savings-goals-page .savings-edit-button:hover {
+  background: #475569;
+}
+
+.savings-goals-page .savings-delete-button {
+  background: #7f1d1d;
+  color: #ffffff;
+  border: 1px solid #991b1b;
+}
+
+.savings-goals-page .savings-delete-button:hover {
+  background: #991b1b;
+}
+
+/* Editing form displayed inside a savings goal card. */
+.savings-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.savings-edit-form label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #c9d1dc;
+}
+
+.savings-edit-form input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.savings-goals-page .savings-cancel-button {
+  background: #475569;
+  color: #ffffff;
+}
+
+.savings-goals-page .savings-cancel-button:hover {
+  background: #64748b;
+}
+
+/* Adjust spacing and controls for smaller screens. */
+@media (max-width: 600px) {
+  .savings-goals-page {
+    padding: 20px 16px;
+  }
+
+  .savings-create-form {
+    flex-direction: column;
+  }
+
+  .savings-create-form input,
+  .savings-create-form button {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .savings-contribution {
+    flex-direction: column;
+  }
+
+  .savings-contribution button {
+    width: 100%;
+  }
+}

@@ -1,10 +1,19 @@
+
 budget.db
 *.db
 .env
+.env.*
+!.env.example
 node_modules/
 .venv/
 __pycache__/
-*.pyc.DS_Store
-.env
+*.pyc
 .DS_Store
 **/.DS_Store
+
+# Vite production build output
+/frontend/dist/
+
+# Local backup
+frontend/src/components/SavingsGoals.jsx.backup
+
