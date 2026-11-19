@@ -11,7 +11,24 @@ from datetime import date, timedelta
 import hashlib
 from fastapi import FastAPI, HTTPException # Imports FastAPI framework to create the backend application. Imports HTTPException to handle exceptions and return appropriate HTTP responses.
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+load_dotenv()
 from .database import get_connection
+
+# Imports for plaid
+import plaid
+import os
+from plaid.api import plaid_api
+from pydantic import BaseModel
+from plaid.model.country_code import CountryCode
+from plaid.model.item_public_token_exchange_request import ItemPublicTokenExchangeRequest
+from plaid.model.link_token_create_request import LinkTokenCreateRequest
+from plaid.model.link_token_create_request_user import LinkTokenCreateRequestUser
+from plaid.model.transactions_sync_request import TransactionsSyncRequest
+from plaid.model.products import Products
+#End plaid imports
+
+
 
 # Creates fastapi app instance with title, description, and version.
 app = FastAPI(title="Budget Tracker Backend", description="Backend for the Budget Tracker application", version="1.0.0")
@@ -102,7 +119,7 @@ def get_budget_summary(user_id: int):
         FROM budgets b
         JOIN categories c ON b.user_id = c.user_id
         LEFT JOIN transactions t ON c.id = t.category_id AND t.date BETWEEN b.start_date AND b.end_date
-        WHERE b.user_id = ?
+        WHERE b.user_id = %s
         GROUP BY b.id, c.id
         """,
         (user_id,)
@@ -317,8 +334,6 @@ def delete_budget(budget_id: int):
     conn.commit()
     conn.close()
     return {"message": "Budget deleted successfully."}
-
-# Future endpoints are to be added later and will allow the frontend to perform CRUD operations on the database through the backend application.
 
 # Endpoint to create onboarding data for a user. Allows the frontend to send onboarding data, including monthly income, budget, and category allocations, to be saved in the database. Validates that the total allocated budget does not exceed the monthly budget and that there are no duplicate categories.
 @app.post("/onboarding")
@@ -562,3 +577,94 @@ def update_financial_profile(user_id: int, profile: dict):
         raise HTTPException(status_code=404, detail="Financial profile not found.")
 
     return {"message": "Financial profile updated successfully!"}
+
+#Connect to Plaid Sandbox
+config=plaid.Configuration(host=plaid.Environment.Sandbox,
+                          api_key = {"clientId": os.environ["PLAID_CLIENT_ID"], "secret":os.environ["PLAID_SECRET"]})
+client = plaid_api.PlaidApi(plaid.ApiClient(config))
+access_token = None 
+class PublicToken(BaseModel):
+    public_token: str
+
+
+#link token for react fronten
+@app.post("/api/create_link_token")
+def create_link_token():
+    res=client.link_token_create(LinkTokenCreateRequest(
+        user=LinkTokenCreateRequestUser(client_user_id="user1"), #replace with real user id
+        client_name="Budget Tracker",
+        products = [Products("transactions")],
+        country_codes = [CountryCode("US")],
+        language="en",
+    ))
+
+    return {"link_token": res["link_token"]}
+
+# exchange for permanent tokeen
+@app.post("/api/exchange_public_token")
+def exchange_public_token(body: PublicToken):
+    global access_token
+    res = client.item_public_token_exchange(
+        ItemPublicTokenExchangeRequest(public_token = body.public_token)
+    )
+    access_token = res["access_token"]
+    return{"ok": True}
+
+#convert plaid categories to ours
+#FULL TAXONOMOY here: https://plaid.com/docs/transactions/pfc-migration/
+Categories = {
+    "ENTERTAINMENT": "Lifestyle & Emergency",
+    "OTHER": "Lifestyle & Emergency",
+    "MEDICAL": "Lifestyle & Emergency",
+    "PERSONAL_CARE": "Lifestyle & Emergency",
+    "FOOD_AND_DRINK": "Dining & Night Bites",
+    "TRANSPORTATION": "Transportation & Travel",
+    "TRAVEL": "Transportation & Travel",
+    "RENT_AND_UTILITIES": "Housing & Utilities",
+}
+
+class ImportBody(BaseModel):
+    account_id: int
+
+#access transactions
+@app.post("/api/import_transactions")
+def Import_transactions(body: ImportBody):
+    if access_token is None:
+        raise HTTPException(status_code=400, detail="Bank not found")
+    #not defined?
+    res = client.transactions_sync(TransactionsSyncRequest(access_token=access_token))
+    conn = get_connection()
+    imported=0
+
+    for t in res.to_dict()["added"]:
+        if t in res.to_dict()["added"]:
+            if t["amount"] <= 0:
+                continue
+        cents = round(t["amount"]*100)
+        date = str(t["date"])
+        pfc = t.get("personal_finance_category") or {}
+        detailed = pfc.get("detailed") or ""
+
+        if "EDUCATION" in detailed or "STUDENT_LOAN" in detailed:
+            category = "Tuition & Fees"
+        else:
+            category = Categories.get(pfc.get("primary"), "Lifestyle & Emergency")
+
+       #add checks for duplicates/invalid later
+        exists = conn.execute("SELECT 1 FROM transactions WHERE account_id=%s AND description=%s AND amount=%s AND date=%s",
+           (body.account_id, t["name"], cents, date),
+       ).fetchone()
+        if exists:
+            continue
+
+        conn.execute("Insert INTO transactions (account_id, description, amount, income, expenses, category, date) VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            (body.account_id, t["name"], cents, 0, cents, category, date),
+       )
+        imported +=1
+
+    conn.commit()
+    conn.close()
+    return{"imported": imported}
+
+# Future endpoints are to be added later and will allow the frontend to perform CRUD operations on the database through the backend application.
+
