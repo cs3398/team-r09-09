@@ -1,0 +1,179 @@
+/* Main onboarding page */
+.onboarding-page {
+  min-height: 100vh;
+  background: #0f172a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 30px 20px;
+  color: #e2e8f0;
+  box-sizing: border-box;
+}
+
+/* Main onboarding card */
+.onboarding-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  padding: 40px;
+  width: 100%;
+  max-width: 550px;
+  box-sizing: border-box;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+/* Welcome heading */
+.onboarding-card h1 {
+  color: #f8fafc;
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 10px;
+}
+
+/* Step indicator */
+.onboarding-card > p {
+  color: #94a3b8;
+  font-size: 14px;
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+/* Section headings */
+.onboarding-card h2 {
+  color: #e2e8f0;
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+
+/* Form layout */
+.onboarding-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Input labels */
+.onboarding-card label {
+  display: block;
+  color: #cbd5e1;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+/* Number inputs */
+.onboarding-card input {
+  width: 100%;
+  padding: 12px 14px;
+  background: #0f172a;
+  border: 1px solid #475569;
+  border-radius: 8px;
+  color: #e2e8f0;
+  font-size: 15px;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+/* Input focus */
+.onboarding-card input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+/* Input placeholder */
+.onboarding-card input::placeholder {
+  color: #64748b;
+}
+
+/* Review step text */
+.onboarding-card p {
+  color: #cbd5e1;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* Buttons */
+.onboarding-card button {
+  background: #3b82f6;
+  color: #ffffff;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  margin-top: 10px;
+}
+
+/* Button hover */
+.onboarding-card button:hover:not(:disabled) {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+/* Button disabled */
+.onboarding-card button:disabled {
+  background: #334155;
+  border-color: #334155;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+/* Keyboard navigation */
+.onboarding-card button:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 3px;
+}
+
+/* Sign-out button at the bottom */
+.onboarding-card > button {
+  width: 100%;
+  background: transparent;
+  border: 1px solid #475569;
+  color: #94a3b8;
+  margin-top: 25px;
+}
+
+/* Sign-out button hover */
+.onboarding-card > button:hover:not(:disabled) {
+  background: #334155;
+  border-color: #64748b;
+  color: #f8fafc;
+}
+
+/* Error messages */
+.onboarding-card [role="alert"] {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+/* Responsive layout */
+@media (max-width: 768px) {
+  .onboarding-page {
+    padding: 20px 15px;
+  }
+
+  .onboarding-card {
+    padding: 25px 20px;
+  }
+
+  .onboarding-card h1 {
+    font-size: 24px;
+  }
+
+  .onboarding-card h2 {
+    font-size: 18px;
+  }
+
+  .onboarding-card input {
+    font-size: 16px;
+  }
+}

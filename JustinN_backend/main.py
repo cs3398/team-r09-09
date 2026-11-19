@@ -4,6 +4,10 @@
 # It provides endpoints to retrieve users, accounts, and transactions from a database. The application is designed to be used with a React frontend, which can make requests to these endpoints using the fetch() API.
 # For react, use fetch() to make requests to the backend endpoints. Example: fetch('http://localhost:8001/users').
 
+# The backend application uses a PostgreSQL database to store user, account, and transaction data. The database connection is established using the psycopg library, and the connection details are stored in environment variables for security.
+from pydantic import BaseModel, Field
+from datetime import date, timedelta
+
 import hashlib
 from fastapi import FastAPI, HTTPException # Imports FastAPI framework to create the backend application. Imports HTTPException to handle exceptions and return appropriate HTTP responses.
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,6 +40,18 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Defines a Pydantic model for budget allocation, which includes category_id and budget_limit fields. The budget_limit field has a validation constraint to ensure it is greater than or equal to 0.
+class BudgetAllocation(BaseModel):
+    category_id: int
+    budget_limit: int = Field(ge=0)
+
+# Defines a Pydantic model for onboarding data, which includes user_id, monthly_income, monthly_budget, and allocations fields. The monthly_income and monthly_budget fields have validation constraints to ensure they are greater than or equal to 0. The allocations field is a list of BudgetAllocation objects.
+class OnboardingData(BaseModel):
+    user_id: int
+    monthly_income: int = Field(ge=0)
+    monthly_budget: int = Field(ge=0)
+    allocations: list[BudgetAllocation]
 
 ### The following are GET endpoints defined to handle requests from the frontend and interact with the database.
 
@@ -112,6 +128,38 @@ def get_budget_summary(user_id: int):
     conn.close()
     return {"budget_summary": [dict(summary) for summary in budget_summary]}
 
+@app.get("/onboarding/{user_id}")
+def get_onboarding(user_id: int):
+    conn = get_connection()
+
+    try:
+        cursor = conn.execute(
+            """
+            SELECT
+                u.id AS user_id,
+                u.onboarding_completed,
+                f.monthly_income
+            FROM user_profile u
+            LEFT JOIN financial_profiles f
+                ON u.id = f.user_id
+            WHERE u.id = %s
+            """,
+            (user_id,)
+        )
+
+        onboarding = cursor.fetchone()
+
+        if onboarding is None:
+            raise HTTPException(
+                status_code=404,
+                detail="User not found."
+            )
+
+        return dict(onboarding)
+
+    finally:
+        conn.close()
+
 ### The following are POST endpoints defined to handle requests from the frontend and interact with the database.
 
 # Defines an endpoint to create a new user in the user_profile table in the database. It accepts a JSON payload containing the user's email and password.
@@ -173,7 +221,8 @@ def create_transaction(transaction: dict):
 def create_category(category: dict):
     conn = get_connection()
     cursor = conn.execute(
-        "INSERT INTO categories (user_id, name, type) VALUES (%s, %s, %s) RETURNING id", (category["user_id"], category["name"], category["type"])
+        "INSERT INTO categories (user_id, name, type) VALUES (%s, %s, %s) ON CONFLICT (user_id, name, type) DO UPDATE SET name = EXCLUDED.name RETURNING id", (category["user_id"], category["name"], category["type"])
+
     )
     conn.commit()
     category_id = cursor.fetchone()['id']
@@ -185,10 +234,10 @@ def create_category(category: dict):
 def create_budget(budget: dict):
     conn = get_connection()
     cursor = conn.execute(
-        "INSERT INTO budgets (user_id, name, start_date, end_date) VALUES (%s, %s, %s, %s) RETURNING id", (budget["user_id"], budget["name"], budget["start_date"], budget["end_date"])
+        "INSERT INTO budgets (user_id, name, start_date, end_date, amount) VALUES (%s, %s, %s, %s, %s) RETURNING id", (budget["user_id"], budget["name"], budget["start_date"], budget["end_date"], budget["amount"])
     )
-    conn.commit()
     budget_id = cursor.fetchone()['id']
+    conn.commit()
     conn.close()
     return {"budget_id": budget_id}
 
@@ -225,7 +274,7 @@ def login(login: dict):
     #send error if incorrecy -JasonS
     if user is None:
         raise HTTPException(status_code=401, detail="Incorrect Login")
-    return {"user_id": user["id"], "email": user["email"]}
+    return {"user_id": user["id"], "email": user["email"], "onboarding_completed": user["onboarding_completed"]}
 
 # Skeletal logout endpoint. Actual implementation will depend on how authentication is handled (e.g., sessions, tokens, etc.). For now, it simply returns a success message.
 @app.post("/logout")
@@ -285,6 +334,251 @@ def delete_budget(budget_id: int):
     conn.commit()
     conn.close()
     return {"message": "Budget deleted successfully."}
+
+# Future endpoints are to be added later and will allow the frontend to perform CRUD operations on the database through the backend application.
+
+# Endpoint to create onboarding data for a user. Allows the frontend to send onboarding data, including monthly income, budget, and category allocations, to be saved in the database. Validates that the total allocated budget does not exceed the monthly budget and that there are no duplicate categories.
+@app.post("/onboarding")
+def create_onboarding(data: OnboardingData):
+    total_allocated = sum(
+        allocation.budget_limit for allocation in data.allocations
+    )
+
+    if total_allocated > data.monthly_budget:
+        raise HTTPException(
+            status_code=400,
+            detail="Category allocations exceed the monthly budget."
+        )
+
+    category_ids = [allocation.category_id for allocation in data.allocations]
+
+    if len(category_ids) != len(set(category_ids)):
+        raise HTTPException(
+            status_code=400,
+            detail="Duplicate categories are not allowed."
+        )
+
+    conn = get_connection()
+
+    try:
+        user = conn.execute(
+            """
+            SELECT id, onboarding_completed
+            FROM user_profile
+            WHERE id = %s
+            FOR UPDATE
+            """,
+            (data.user_id,)
+        ).fetchone()
+
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found.")
+
+        if user["onboarding_completed"]:
+            raise HTTPException(
+                status_code=409,
+                detail="Onboarding has already been completed."
+            )
+
+        for allocation in data.allocations:
+            category = conn.execute(
+                """
+                SELECT id FROM categories
+                WHERE id = %s AND user_id = %s
+                """,
+                (allocation.category_id, data.user_id)
+            ).fetchone()
+
+            if category is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid category: {allocation.category_id}"
+                )
+
+        conn.execute(
+            """
+            INSERT INTO financial_profiles (user_id, monthly_income)
+            VALUES (%s, %s)
+            ON CONFLICT (user_id)
+            DO UPDATE SET monthly_income = EXCLUDED.monthly_income
+            """,
+            (data.user_id, data.monthly_income)
+        )
+
+        today = date.today()
+        start_date = today.replace(day=1)
+
+        if today.month == 12:
+            next_month = date(today.year + 1, 1, 1)
+        else:
+            next_month = date(today.year, today.month + 1, 1)
+
+        end_date = next_month - timedelta(days=1)
+
+        cursor = conn.execute(
+            """
+            INSERT INTO budgets
+                (user_id, name, start_date, end_date, amount)
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING id
+            """,
+            (
+                data.user_id,
+                "Monthly Budget",
+                start_date.isoformat(),
+                end_date.isoformat(),
+                data.monthly_budget
+            )
+        )
+
+        budget_id = cursor.fetchone()["id"]
+
+        for allocation in data.allocations:
+            conn.execute(
+                """
+                INSERT INTO budget_transactions
+                    (budget_id, category_id, budget_limit)
+                VALUES (%s, %s, %s)
+                """,
+                (
+                    budget_id,
+                    allocation.category_id,
+                    allocation.budget_limit
+                )
+            )
+
+        conn.execute(
+            """
+            UPDATE user_profile
+            SET onboarding_completed = TRUE
+            WHERE id = %s
+            """,
+            (data.user_id,)
+        )
+
+        conn.commit()
+
+        return {
+            "message": "Onboarding completed successfully!",
+            "budget_id": budget_id
+        }
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        conn.close()
+
+# Endpoint to update a budget transaction's budget limit. Allows the frontend to send a new budget limit for a specific budget_transaction_id to be updated in the database. Validates that the new budget limit is a nonnegative integer and that the budget transaction exists.
+@app.put("/budget_transactions/{budget_transaction_id}")
+def update_budget_transaction(budget_transaction_id: int, budget_transaction: dict):
+    conn = get_connection()
+
+    try:
+        budget_limit = budget_transaction["budget_limit"]
+
+        if type(budget_limit) is not int or budget_limit < 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Budget limit must be a nonnegative integer."
+            )
+
+        cursor = conn.execute(
+            """
+            UPDATE budget_transactions
+            SET budget_limit = %s
+            WHERE id = %s
+            RETURNING id
+            """,
+            (budget_limit, budget_transaction_id)
+        )
+
+        updated_budget_transaction = cursor.fetchone()
+
+        if updated_budget_transaction is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Budget transaction not found."
+            )
+
+        conn.commit()
+
+        return {"message": "Budget transaction updated successfully!"}
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        conn.close()
+
+# Endpoint to update a budget's amount. Allows the frontend to send a new budget amount for a specific budget_id to be updated in the database. Validates that the new amount is a nonnegative integer and that the budget exists.
+@app.put("/budgets/{budget_id}")
+def update_budget(budget_id: int, budget: dict):
+    conn = get_connection()
+
+    try:
+        amount = budget["amount"]
+
+        if type(amount) is not int or amount < 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Budget amount must be a nonnegative integer."
+            )
+
+        cursor = conn.execute(
+            """
+            UPDATE budgets
+            SET amount = %s
+            WHERE id = %s
+            RETURNING id
+            """,
+            (amount, budget_id)
+        )
+
+        updated_budget = cursor.fetchone()
+
+        if updated_budget is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Budget not found."
+            )
+
+        conn.commit()
+
+        return {"message": "Budget updated successfully!"}
+
+    except Exception:
+        conn.rollback()
+        raise
+
+    finally:
+        conn.close()
+
+# Endpoint to update a financial profile's monthly income. Allows the frontend to send a new monthly income for a specific user_id to be updated in the database. Validates that the new monthly income is a nonnegative integer and that the financial profile exists.
+@app.put("/financial_profiles/{user_id}")
+def update_financial_profile(user_id: int, profile: dict):
+    conn = get_connection()
+
+    cursor = conn.execute(
+        """
+        UPDATE financial_profiles
+        SET monthly_income = %s
+        WHERE user_id = %s
+        RETURNING id
+        """,
+        (profile["monthly_income"], user_id)
+    )
+
+    updated_profile = cursor.fetchone()
+    conn.commit()
+    conn.close()
+
+    if updated_profile is None:
+        raise HTTPException(status_code=404, detail="Financial profile not found.")
+
+    return {"message": "Financial profile updated successfully!"}
 
 #Connect to Plaid Sandbox
 config=plaid.Configuration(host=plaid.Environment.Sandbox,
