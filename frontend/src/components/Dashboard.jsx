@@ -65,13 +65,13 @@ function formatMoney(cents) {
 
 function Dashboard({
   userId,
-  userPoints,
-  setUserPoints,
   onSignOut,
   onOpenCalendar,
   onOpenSavings,
   onOpenGarden
 }) {
+  // Real Owl Points balance stored in Supabase.
+  const [userPoints, setUserPoints] = useState(0);
   // The budget is temporary React state until the backend
   // provides endpoints for storing and retrieving budgets.
   const [showRewardsModal, setShowRewardsModal] = useState(false);
