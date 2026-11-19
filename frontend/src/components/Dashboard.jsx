@@ -97,24 +97,10 @@ function Dashboard({ userId, onSignOut, onOpenCalendar, onOpenSavings }) {
   const [streak, setStreak] = useState(3);
   const [claimedCoupons, setClaimedCoupons] = useState([]);
 
-  // Stores the randomly generated code for each redeemed voucher.
+  // Stores redeemed voucher codes retrieved from Supabase.
   const [voucherCodes, setVoucherCodes] = useState({});
 
-  // Generates a sample voucher code for demonstration purposes.
-  function generateVoucherCode() {
-    const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    let code = 'OWL-';
-
-    for (let i = 0; i < 8; i++) {
-      code += characters[Math.floor(Math.random() * characters.length)];
-
-      if (i === 3) {
-        code += '-';
-      }
-    }
-
-    return code;
-  }
+  
 
   const [selectedCoupon, setSelectedCoupon] = useState(null);
   const [zipCode, setZipCode] = useState('78660'); // Pflugerville, TX default
@@ -166,6 +152,55 @@ function Dashboard({ userId, onSignOut, onOpenCalendar, onOpenSavings }) {
       cancelled = true;
     };
   }, [userId]);
+
+  // Load redeemed vouchers and their saved codes from Supabase.
+  // This restores claimed vouchers after refresh or login.
+  useEffect(() => {
+    if (userId == null) {
+      setClaimedCoupons([]);
+      setVoucherCodes({});
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadRedeemedVouchers() {
+      try {
+        const response = await fetch(
+          `${API_URL}/redeemed-vouchers/${userId}`
+        );
+
+        if (!response.ok) {
+          throw new Error('Unable to load redeemed vouchers.');
+        }
+
+        const data = await response.json();
+        const vouchers = data.vouchers || [];
+
+        if (!cancelled) {
+          // Remember which vouchers were already redeemed.
+          setClaimedCoupons(vouchers.map(voucher => voucher.coupon_id));
+
+          // Restore each voucher's original demonstration code.
+          const savedCodes = {};
+          vouchers.forEach(voucher => {
+            savedCodes[voucher.coupon_id] = voucher.voucher_code;
+          });
+
+          setVoucherCodes(savedCodes);
+        }
+      } catch (error) {
+        console.error('Redeemed vouchers loading error:', error);
+      }
+    }
+
+    loadRedeemedVouchers();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
 
 
   // Load the total money allocated toward Savings Goals.
@@ -891,24 +926,52 @@ function Dashboard({ userId, onSignOut, onOpenCalendar, onOpenSavings }) {
                     ) : (
                       <button 
                         disabled={!canAfford}
-                    
-                 onClick={() => {
-                    // Generate a unique-looking demo code for this voucher.
-                   const newCode = generateVoucherCode();
 
-                  // Remember the code while the Dashboard is open.
-                  setVoucherCodes(prev => ({
-                     ...prev,
-                   [coupon.id]: newCode
-                   }));
+                  
+                  onClick={async () => {
+                    try {
+                      // Redeem the voucher through the backend.
+                      const response = await fetch(`${API_URL}/redeemed-vouchers`, {
+                        method: 'POST',
+                       headers: {
+                          'Content-Type': 'application/json'
+                       },
+                       body: JSON.stringify({
+                          user_id: userId,
+                         coupon_id: coupon.id
+                       })
+                     });
 
-               // Keep the existing points and redemption behavior.
-                  setUserPoints(prev => prev - coupon.cost);
-                   setClaimedCoupons(prev => [...prev, coupon.id]);
-                  setSelectedCoupon(coupon);
-                  setToast(`Unlocked ${coupon.title}!`);
+                      const data = await response.json();
+
+                      if (!response.ok) {
+                        throw new Error(data.detail || 'Voucher redemption failed.');
+                     }
+
+                     // Restore the balance returned by Supabase.
+                     setUserPoints(data.balance);
+
+                    // Save the permanent voucher code returned by the backend.
+                      setVoucherCodes(prev => ({
+                        ...prev,
+                        [coupon.id]: data.voucher_code
+                      }));
+
+                      // Mark the voucher as claimed.
+                      setClaimedCoupons(prev => [...prev, coupon.id]);
+
+                     // Show the existing voucher popup.
+                      setSelectedCoupon(coupon);
+                      setToast(`Unlocked ${coupon.title}!`);
                     setTimeout(() => setToast(null), 3000);
-                 }}
+
+                    } catch (error) {
+                      console.error('Voucher redemption error:', error);
+                        setToast(error.message);
+                      setTimeout(() => setToast(null), 3000);
+                      }
+                  }}
+  
 
                         style={{
                           width: '100%', padding: '10px', borderRadius: '10px', border: 'none',

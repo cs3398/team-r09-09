@@ -535,3 +535,146 @@ def get_owl_points(user_id: int):
         ).fetchone()
 
     return {"balance": points["balance"] if points else 150}
+
+
+
+# ============================================================
+# VOUCHER REDEMPTIONS
+# ============================================================
+
+# Generates random demonstration voucher codes.
+# These codes are for the class project, not real store discounts.
+from secrets import choice
+
+VOUCHER_COSTS = {
+    "c1": 200,  # $5 Dining voucher
+    "c2": 200,  # $5 Shopping voucher
+    "c3": 450   # $10 Travel voucher
+}
+
+
+def generate_voucher_code():
+    characters = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+
+    first = "".join(choice(characters) for _ in range(4))
+    second = "".join(choice(characters) for _ in range(4))
+
+    return f"OWL-{first}-{second}"
+
+
+# Retrieve vouchers previously redeemed by a user.
+# The frontend uses this to restore claimed vouchers after refreshing.
+@app.get("/redeemed-vouchers/{user_id}")
+def get_redeemed_vouchers(user_id: int):
+    if not valid_positive_int(user_id):
+        raise HTTPException(400, "A valid user ID is required.")
+
+    with get_connection() as conn:
+        vouchers = conn.execute(
+            """
+            SELECT coupon_id, voucher_code, points_spent, redeemed_at
+            FROM redeemed_vouchers
+            WHERE user_id = %s
+            ORDER BY redeemed_at DESC
+            """,
+            (user_id,)
+        ).fetchall()
+
+    return {"vouchers": vouchers}
+
+
+# Redeem a voucher and permanently deduct Owl Points.
+# Both database changes succeed together or are rolled back.
+@app.post("/redeemed-vouchers")
+def redeem_voucher(redemption: dict):
+    user_id = redemption.get("user_id")
+    coupon_id = redemption.get("coupon_id")
+
+    if not valid_positive_int(user_id):
+        raise HTTPException(400, "A valid user ID is required.")
+
+    # Only accept vouchers defined by the Rewards Hub.
+    if coupon_id not in VOUCHER_COSTS:
+        raise HTTPException(400, "Invalid voucher.")
+
+    cost = VOUCHER_COSTS[coupon_id]
+
+    with get_connection() as conn:
+
+        # Create the user's initial Owl Points record if missing.
+        # Also confirms the user exists through the foreign key.
+        user = conn.execute(
+            "SELECT id FROM user_profile WHERE id = %s",
+            (user_id,)
+        ).fetchone()
+
+        if not user:
+            raise HTTPException(404, "User not found.")
+
+        conn.execute(
+            """
+            INSERT INTO owl_points (user_id, balance)
+            VALUES (%s, 150)
+            ON CONFLICT (user_id) DO NOTHING
+            """,
+            (user_id,)
+        )
+
+        # Lock the points balance to prevent overlapping redemptions.
+        points = conn.execute(
+            """
+            SELECT balance
+            FROM owl_points
+            WHERE user_id = %s
+            FOR UPDATE
+            """,
+            (user_id,)
+        ).fetchone()
+
+        # Prevent claiming the same voucher more than once.
+        already_claimed = conn.execute(
+            """
+            SELECT id
+            FROM redeemed_vouchers
+            WHERE user_id = %s AND coupon_id = %s
+            """,
+            (user_id, coupon_id)
+        ).fetchone()
+
+        if already_claimed:
+            raise HTTPException(409, "Voucher already redeemed.")
+
+        if points["balance"] < cost:
+            raise HTTPException(400, "Not enough Owl Points.")
+
+        # Generate the demo code on the backend.
+        code = generate_voucher_code()
+
+        # Save the claim before deducting points.
+        conn.execute(
+            """
+            INSERT INTO redeemed_vouchers
+                (user_id, coupon_id, voucher_code, points_spent)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (user_id, coupon_id, code, cost)
+        )
+
+        # Permanently deduct the voucher's point cost.
+        updated = conn.execute(
+            """
+            UPDATE owl_points
+            SET balance = balance - %s
+            WHERE user_id = %s
+            RETURNING balance
+            """,
+            (cost, user_id)
+        ).fetchone()
+
+    return {
+        "message": "Voucher redeemed successfully.",
+        "coupon_id": coupon_id,
+        "voucher_code": code,
+        "points_spent": cost,
+        "balance": updated["balance"]
+    }
