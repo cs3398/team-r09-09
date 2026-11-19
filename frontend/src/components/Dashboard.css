@@ -212,6 +212,28 @@
   padding: 30px !important;
 }
 
+/* Delete button styles */
+.delete-button {
+  padding: 6px 12px;
+  background-color: #ef4444;
+  color: white;
+  border: 1px solid #dc2626;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* Hover effect for delete button */
+.delete-button:hover:not(:disabled) {
+  background-color: #dc2626;
+}
+
+/* Disabled state for delete button */
+.delete-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Responsive layout for smaller screens */
 @media (max-width: 768px) {
   .dashboard-page {

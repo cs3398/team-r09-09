@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 
 import './Dashboard.css';
+import Plaid from "./Plaid";
 
 // Address of the Python FastAPI backend running on your Mac.
 const API_URL = 'http://127.0.0.1:8001';
@@ -62,15 +63,24 @@ function formatMoney(cents) {
   });
 }
 
-function Dashboard({ userId, onSignOut, onOpenCalendar, onOpenSavings }) {
+function Dashboard({
+  userId,
+  userPoints,
+  setUserPoints,
+  onSignOut,
+  onOpenCalendar,
+  onOpenSavings,
+  onOpenGarden
+}) {
   // The budget is temporary React state until the backend
   // provides endpoints for storing and retrieving budgets.
-  const [userPoints, setUserPoints] = useState(150);
   const [showRewardsModal, setShowRewardsModal] = useState(false);
   const UNLOCK_THRESHOLD = 200;
   const pointsNeeded = Math.max(0, UNLOCK_THRESHOLD - userPoints);
-  const [budget, setBudget] = useState(2500);
-  const [budgetInput, setBudgetInput] = useState('2500');
+  // Unhard-coded budget values for the demo. The backend does not yet provide endpoints for storing and retrieving budgets.
+  const [budget, setBudget] = useState(0);
+  const [budgetInput, setBudgetInput] = useState('');
+  const [budgetId, setBudgetId] = useState(null);
 
 
   // Total money currently allocated to Savings Goals.
@@ -339,19 +349,123 @@ function Dashboard({ userId, onSignOut, onOpenCalendar, onOpenSavings }) {
     };
   }, [userId]);
 
-  // Updates the displayed monthly budget.
-  // This value is not saved in SQLite yet.
-  function handleUpdateBudget() {
-    const newBudget = Number(budgetInput);
+  // Retrieves the user's budget for the current month.
+  useEffect(() => {
+    let cancelled = false;
 
-    if (!Number.isFinite(newBudget) || newBudget < 0 ||
-        budgetInput.trim() === '') {
-      setMessage('Please enter a valid budget amount.');
-      return;
+    async function loadBudget() {
+      try {
+        const response = await fetch(
+          `${API_URL}/budgets/${userId}`
+        );
+
+        if (!response.ok) {
+          throw new Error('Unable to retrieve your budget.');
+        }
+
+        const data = await response.json();
+
+        // Find the budget covering the current month.
+        const today = new Date();
+        const currentDate = [
+          today.getFullYear(),
+          String(today.getMonth() + 1).padStart(2, '0'),
+          String(today.getDate()).padStart(2, '0')
+        ].join('-');
+
+        const savedBudget = data.budgets?.find(
+          (item) =>
+            item.start_date <= currentDate &&
+            item.end_date >= currentDate
+        );
+
+        if (!cancelled && savedBudget) {
+          // Save the budget ID for future updates.
+          setBudgetId(savedBudget.id);
+
+          // Convert cents to dollars.
+          const amount = savedBudget.amount / 100;
+
+          setBudget(amount);
+          setBudgetInput(String(amount));
+        }
+
+        if (!cancelled && !savedBudget) {
+          setMessage('No budget found for the current month.');
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setMessage(error.message);
+        }
+      }
     }
 
-    setBudget(newBudget);
-    setMessage('Budget updated for this session.');
+    if (userId != null) {
+      loadBudget();
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
+  // Updates the displayed monthly budget.
+  // This value is now stored in the backend and retrieved on page load.
+  async function handleUpdateBudget() {
+  const newBudget = Number(budgetInput);
+
+  if (
+    !Number.isFinite(newBudget) ||
+    newBudget < 0 ||
+    budgetInput.trim() === ''
+  ) {
+    setMessage('Please enter a valid budget amount.');
+    return;
+  }
+
+  if (budgetId == null) {
+    setMessage('No monthly budget was found.');
+    return;
+  }
+
+  const amountInCents = Math.round(newBudget * 100);
+
+  if (!Number.isSafeInteger(amountInCents)) {
+    setMessage('Please enter a valid budget amount.');
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `${API_URL}/budgets/${budgetId}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          amount: amountInCents
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error('Unable to update budget.');
+    }
+
+    setBudget(amountInCents / 100);
+    setBudgetInput(String(amountInCents / 100));
+    setMessage('Budget updated successfully!');
+  } catch (error) {
+    setMessage(error.message);
+  }
+}
+
+  async function handePlaidImport(resultMessage) {
+    const response = await fetch(`${API_URL}/transactions/${accountId}`);
+    const data = await response.json();
+    setTransactions(data.transactions  || []);
+    setMessage(resultMessage);
   }
 
   // Sends the new expense to FastAPI for permanent storage.
@@ -389,7 +503,7 @@ function Dashboard({ userId, onSignOut, onOpenCalendar, onOpenSavings }) {
 
     try {
       // Use the local calendar date rather than UTC so
-      // the saved date matches the user's current day.
+      //the saved date matches the user's current day.
       const today = new Date();
       const year = today.getFullYear();
       const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -405,6 +519,8 @@ function Dashboard({ userId, onSignOut, onOpenCalendar, onOpenSavings }) {
           account_id: accountId,
           description: title.trim(),
           amount: amountInCents,
+          income: 0,
+          expenses: amountInCents,
           category: category,
           date: date
         })
@@ -419,7 +535,6 @@ function Dashboard({ userId, onSignOut, onOpenCalendar, onOpenSavings }) {
       if (!Number.isInteger(result.transaction_id)) {
         throw new Error('The backend did not confirm the transaction.');
       }
-
       // Retrieve the latest transactions from SQLite after saving.
       // This ensures the dashboard displays database records.
       const refreshResponse = await fetch(
@@ -446,6 +561,59 @@ function Dashboard({ userId, onSignOut, onOpenCalendar, onOpenSavings }) {
       setIsSaving(false);
     }
   }
+
+  // Deletes an expense from FastAPI and updates transaction history.
+  async function handleDeleteTransaction(transactionId) {
+    setMessage('');
+
+    if (!Number.isInteger(transactionId)) {
+        setMessage('Invalid transaction ID.');
+        return;
+    }
+
+    if (accountId == null) {
+        setMessage('Your account is not ready. Please try signing in again.');
+        return;
+    }
+    
+    setIsSaving(true);
+
+    try {
+        // Send DELETE request to FastAPI.
+        const response = await fetch(
+            `${API_URL}/transactions/${transactionId}`,
+            {
+                method: 'DELETE'
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error('Unable to delete the expense.');
+        }
+
+        // Retrieve the latest transactions after deleting.
+        // This ensures the dashboard displays updated database records.
+        const refreshResponse = await fetch(
+            `${API_URL}/transactions/${accountId}`
+        );
+
+        if (!refreshResponse.ok) {
+            throw new Error(
+                'Expense deleted, but the transaction list could not refresh.'
+            );
+        }
+
+        const refreshedData = await refreshResponse.json();
+
+        setTransactions(refreshedData.transactions || []);
+
+        setMessage('Expense deleted successfully!');
+    } catch (error) {
+        setMessage(error.message || 'Unable to connect to FastAPI.');
+    } finally {
+        setIsSaving(false);
+    }
+}
 
   // All saved transactions are treated as expenses for this demo.
   const totalSpentCents = transactions.reduce(
@@ -546,10 +714,19 @@ function Dashboard({ userId, onSignOut, onOpenCalendar, onOpenSavings }) {
           <button
             type="button"
             className="dashboard-button"
-            onClick={onOpenCalendar}>
-              
+            onClick={onOpenGarden}>
+            🌱 Garden
+            </button>
+            <button
+              type="button"
+              className="dashboard-button"
+              onClick={onOpenCalendar}
+            >  
               Calendar 
             </button>
+
+          
+           <Plaid accountId={accountId} onImported={handePlaidImport}/>
 
           <button
             type="button"
@@ -754,6 +931,7 @@ function Dashboard({ userId, onSignOut, onOpenCalendar, onOpenSavings }) {
                 <th>Title</th>
                 <th>Category</th>
                 <th>Amount ($)</th>
+                <th>Actions</th>
               </tr>
             </thead>
 
@@ -761,7 +939,7 @@ function Dashboard({ userId, onSignOut, onOpenCalendar, onOpenSavings }) {
               {transactions.length === 0 ? (
                 <tr>
                   <td
-                    colSpan="3"
+                    colSpan="4"
                     className="empty-transactions"
                   >
                     {isLoading
@@ -778,6 +956,16 @@ function Dashboard({ userId, onSignOut, onOpenCalendar, onOpenSavings }) {
                       <td>{transaction.category || 'Uncategorized'}</td>
                       <td>
                         {formatMoney(Number(transaction.amount))}
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="delete-button"
+                          onClick={() => handleDeleteTransaction(transaction.id)}
+                          disabled={isSaving}
+                        >
+                          Delete
+                        </button>
                       </td>
                     </tr>
                   ))

@@ -2,8 +2,8 @@
 
 ## Applications used:
 
-Backend: Python with FastAPI framework  
-Frontend: JavaScript with React  
+Backend: Python with FastAPI framework, Plaid API
+Frontend: JavaScript with React, React-Plaid-Link UI  
 Database: Supabase PostgreSQL  
 
 ## Software to Download:
@@ -30,7 +30,6 @@ source .venv/bin/activate (MacOS / Linux)
 py -m pip install -r requirements.txt (Windows)  
 python -m pip install -r requirements.txt (Windows)  
 python3 -m pip install -r requirements.txt (MacOS / Linux)  
-python3 -m pip install plaid-python python-dotenv (MacOS / Linux)
 
 ## 3. Configure Supabase Connection
 In project folder, create a new file called .env  
@@ -59,6 +58,7 @@ python3 -m uvicorn JustinN_backend.main:app --reload --port 8001 (MacOS / Linux)
 ## 1. Navigate to frontend file and install npm
 cd frontend  
 npm install  
+npm install react-plaid-link
 
 ## 2. Start up Frontend
 npm run dev  
