@@ -368,6 +368,8 @@ function Dashboard({ userId, onSignOut, onOpenCalendar }) {
           account_id: accountId,
           description: title.trim(),
           amount: amountInCents,
+          income: 0,
+          expenses: amountInCents,
           category: category,
           date: date
         })
@@ -382,7 +384,6 @@ function Dashboard({ userId, onSignOut, onOpenCalendar }) {
       if (!Number.isInteger(result.transaction_id)) {
         throw new Error('The backend did not confirm the transaction.');
       }
-
       // Retrieve the latest transactions from SQLite after saving.
       // This ensures the dashboard displays database records.
       const refreshResponse = await fetch(
@@ -409,6 +410,59 @@ function Dashboard({ userId, onSignOut, onOpenCalendar }) {
       setIsSaving(false);
     }
   }
+
+  // Deletes an expense from FastAPI and updates transaction history.
+  async function handleDeleteTransaction(transactionId) {
+    setMessage('');
+
+    if (!Number.isInteger(transactionId)) {
+        setMessage('Invalid transaction ID.');
+        return;
+    }
+
+    if (accountId == null) {
+        setMessage('Your account is not ready. Please try signing in again.');
+        return;
+    }
+    
+    setIsSaving(true);
+
+    try {
+        // Send DELETE request to FastAPI.
+        const response = await fetch(
+            `${API_URL}/transactions/${transactionId}`,
+            {
+                method: 'DELETE'
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error('Unable to delete the expense.');
+        }
+
+        // Retrieve the latest transactions after deleting.
+        // This ensures the dashboard displays updated database records.
+        const refreshResponse = await fetch(
+            `${API_URL}/transactions/${accountId}`
+        );
+
+        if (!refreshResponse.ok) {
+            throw new Error(
+                'Expense deleted, but the transaction list could not refresh.'
+            );
+        }
+
+        const refreshedData = await refreshResponse.json();
+
+        setTransactions(refreshedData.transactions || []);
+
+        setMessage('Expense deleted successfully!');
+    } catch (error) {
+        setMessage(error.message || 'Unable to connect to FastAPI.');
+    } finally {
+        setIsSaving(false);
+    }
+}
 
   // All saved transactions are treated as expenses for this demo.
   const totalSpentCents = transactions.reduce(
@@ -708,6 +762,7 @@ function Dashboard({ userId, onSignOut, onOpenCalendar }) {
                 <th>Title</th>
                 <th>Category</th>
                 <th>Amount ($)</th>
+                <th>Actions</th>
               </tr>
             </thead>
 
@@ -715,7 +770,7 @@ function Dashboard({ userId, onSignOut, onOpenCalendar }) {
               {transactions.length === 0 ? (
                 <tr>
                   <td
-                    colSpan="3"
+                    colSpan="4"
                     className="empty-transactions"
                   >
                     {isLoading
@@ -732,6 +787,16 @@ function Dashboard({ userId, onSignOut, onOpenCalendar }) {
                       <td>{transaction.category || 'Uncategorized'}</td>
                       <td>
                         {formatMoney(Number(transaction.amount))}
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          className="delete-button"
+                          onClick={() => handleDeleteTransaction(transaction.id)}
+                          disabled={isSaving}
+                        >
+                          Delete
+                        </button>
                       </td>
                     </tr>
                   ))
